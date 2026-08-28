@@ -1,0 +1,625 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://releve.neorgon.com/data/schema.json",
+  "title": "Releve data contracts",
+  "description": "Every document Releve reads or writes, keyed by the `schema` string the document carries. Checked by `scripts/check-schema.py`, which dispatches on that string through the `documents` map below. `releve/v1` and `releve-repo/v1` are closed (an undocumented key is a failure) because the site ingests them and a silently added field is how a viewer starts disagreeing with a scanner. `releve-rates/v1`, `releve-testcases/v1` and `releve-view/v1` are documented at the top level only, and say so where they are defined.",
+  "documents": {
+    "releve/v1": "#/$defs/statement",
+    "releve-repo/v1": "#/$defs/repo",
+    "releve-tokenizer/v1": "#/$defs/tokenizer",
+    "releve-rates/v1": "#/$defs/rates",
+    "releve-testcases/v1": "#/$defs/testcases",
+    "releve-view/v1": "#/$defs/view"
+  },
+
+  "$defs": {
+    "tokens": {
+      "description": "The six counters every total is built from. `thinking` is a label, already inside `output`, and is never priced a second time.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "output", "thinking", "cache_write_5m", "cache_write_1h", "cache_read"],
+      "properties": {
+        "input": { "type": "integer" },
+        "output": { "type": "integer" },
+        "thinking": { "type": "integer" },
+        "cache_write_5m": { "type": "integer" },
+        "cache_write_1h": { "type": "integer" },
+        "cache_read": { "type": "integer" }
+      }
+    },
+
+    "cost": {
+      "description": "Dollars at list rates. Cache costs are derived from base input times a multiplier, never typed per model.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "output", "cache_write", "cache_read", "total"],
+      "properties": {
+        "input": { "type": "number" },
+        "output": { "type": "number" },
+        "cache_write": { "type": "number" },
+        "cache_read": { "type": "number" },
+        "total": { "type": "number" }
+      }
+    },
+
+    "bucket": {
+      "description": "One rollup: a day, a model inside a day, or a dimension row. `uncached_cost` reprices every cache read and write as fresh input at the same model, which is what the cache lab compares against.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["turns", "unpriced_turns", "tokens", "cost", "uncached_cost"],
+      "properties": {
+        "turns": { "type": "integer" },
+        "unpriced_turns": { "type": "integer" },
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "cost": { "$ref": "#/$defs/cost" },
+        "uncached_cost": { "type": "number" }
+      }
+    },
+
+    "dimension_row": {
+      "description": "A bucket plus its label and its tokens split by rate key, so the rate editor can reprice a project without knowing which models spent it. A bucket's own total can never be repriced from itself.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "turns", "unpriced_turns", "tokens", "cost", "uncached_cost", "by_rate"],
+      "properties": {
+        "key": { "type": "string" },
+        "turns": { "type": "integer" },
+        "unpriced_turns": { "type": "integer" },
+        "tokens": { "$ref": "#/$defs/tokens" },
+        "cost": { "$ref": "#/$defs/cost" },
+        "uncached_cost": { "type": "number" },
+        "by_rate": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/tokens" }
+        }
+      }
+    },
+
+    "model_turns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "turns"],
+      "properties": {
+        "model": { "type": "string" },
+        "turns": { "type": "integer" }
+      }
+    },
+
+    "statement": {
+      "description": "What `releve-scan.py` writes and the site loads: `data/demo.json` (synthetic, published) and `data/local.json` (real, gitignored). Aggregates and labels only, never prompt or response text.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "generated", "generator", "anonymized", "withheld",
+        "rates", "window", "plan", "totals", "days", "dimensions",
+        "rate_keys", "sessions", "calibration"
+      ],
+      "properties": {
+        "schema": { "const": "releve/v1" },
+        "generated": { "type": "string" },
+        "generator": { "type": "string" },
+        "anonymized": { "type": "boolean" },
+        "withheld": {
+          "description": "Named rather than left empty, so a reader can tell `no branches in this window` from `branch names were withheld`.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "verified", "source"],
+          "properties": {
+            "version": { "type": ["string", "null"] },
+            "verified": { "type": ["string", "null"] },
+            "source": { "type": ["string", "null"] }
+          }
+        },
+        "window": {
+          "description": "`from` and `to` are the first and last day that actually carried a turn; `requested_*` are what was asked for. They differ whenever the window is wider than the data.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to", "days", "requested_from", "requested_until"],
+          "properties": {
+            "from": { "type": ["string", "null"] },
+            "to": { "type": ["string", "null"] },
+            "days": { "type": ["integer", "null"] },
+            "requested_from": { "type": ["string", "null"] },
+            "requested_until": { "type": ["string", "null"] }
+          }
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monthly_cost", "note"],
+          "properties": {
+            "monthly_cost": { "type": ["number", "null"] },
+            "note": { "type": "string" }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessions", "turns", "files", "tokens", "cost", "counterfactual", "unpriced", "excluded", "quality"],
+          "properties": {
+            "sessions": { "type": "integer" },
+            "turns": { "type": "integer" },
+            "files": { "type": "integer" },
+            "tokens": { "$ref": "#/$defs/tokens" },
+            "cost": { "$ref": "#/$defs/cost" },
+            "counterfactual": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["no_cache_total", "cache_saved", "note"],
+              "properties": {
+                "no_cache_total": { "type": "number" },
+                "cache_saved": { "type": "number" },
+                "note": { "type": "string" }
+              }
+            },
+            "unpriced": {
+              "description": "A model with no published rate. Counted, named, and left out of every total: never zeroed, never priced at a similar model's rate.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["turns", "models", "tokens", "note"],
+              "properties": {
+                "turns": { "type": "integer" },
+                "models": { "type": "array", "items": { "$ref": "#/$defs/model_turns" } },
+                "tokens": { "$ref": "#/$defs/tokens" },
+                "note": { "type": "string" }
+              }
+            },
+            "excluded": {
+              "description": "Turns that were never billed at all, such as locally generated `<synthetic>` responses.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["turns", "models", "note"],
+              "properties": {
+                "turns": { "type": "integer" },
+                "models": { "type": "array", "items": { "$ref": "#/$defs/model_turns" } },
+                "note": { "type": "string" }
+              }
+            },
+            "quality": {
+              "description": "Everything the scan had to assume or throw away, in counts. Section 8 prints these next to the total rather than under it.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "estimated_cache_split_turns", "tier_assumed_turns", "iteration_turns",
+                "multi_iteration_turns", "duplicate_turns_skipped", "richer_duplicates_preferred",
+                "malformed_lines", "files_unreadable"
+              ],
+              "properties": {
+                "estimated_cache_split_turns": { "type": "integer" },
+                "tier_assumed_turns": { "type": "integer" },
+                "iteration_turns": { "type": "integer" },
+                "multi_iteration_turns": { "type": "integer" },
+                "duplicate_turns_skipped": { "type": "integer" },
+                "richer_duplicates_preferred": { "type": "integer" },
+                "malformed_lines": { "type": "integer" },
+                "files_unreadable": { "type": "integer" }
+              }
+            }
+          }
+        },
+        "days": {
+          "description": "One entry per day that carried a turn. `dims` is the thin brushable projection of `dimensions`: `[turns, cost, unpriced_turns]` per key, and no `model` axis because `by_model` already carries that slice in full.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["date", "turns", "unpriced_turns", "tokens", "cost", "uncached_cost", "by_model", "dims"],
+            "properties": {
+              "date": { "type": "string" },
+              "turns": { "type": "integer" },
+              "unpriced_turns": { "type": "integer" },
+              "tokens": { "$ref": "#/$defs/tokens" },
+              "cost": { "$ref": "#/$defs/cost" },
+              "uncached_cost": { "type": "number" },
+              "by_model": {
+                "type": "object",
+                "additionalProperties": { "$ref": "#/$defs/bucket" }
+              },
+              "dims": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "prefixItems": [
+                      { "type": "integer" },
+                      { "type": "number" },
+                      { "type": "integer" }
+                    ],
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "dimensions": {
+          "description": "The window-wide rollup on eight axes, each sorted by cost. `branch` is absent from an anonymized document and named in `withheld`.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "project", "skill", "effort", "lane", "tier", "version"],
+          "properties": {
+            "model": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "project": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "skill": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "effort": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "branch": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "lane": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "tier": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } },
+            "version": { "type": "array", "items": { "$ref": "#/$defs/dimension_row" } }
+          }
+        },
+        "rate_keys": {
+          "description": "What each `by_rate` key means. `#fast` is the speed suffix, `@priority` the service tier, so `claude-opus-5#fast@priority` is one key and one rate.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["model", "speed", "tier", "status"],
+            "properties": {
+              "model": { "type": "string" },
+              "speed": { "enum": ["standard", "fast"] },
+              "tier": { "enum": ["standard", "priority", "batch"] },
+              "status": { "enum": ["priced", "unpriced", "excluded"] }
+            }
+          }
+        },
+        "sessions": {
+          "description": "Sorted by cost. `title` is present only when the document is not anonymized.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "project", "lane", "started", "ended", "turns", "cost", "uncached_cost", "models", "unpriced_turns"],
+            "properties": {
+              "id": { "type": "string" },
+              "project": { "type": "string" },
+              "lane": { "type": "string" },
+              "started": { "type": ["string", "null"] },
+              "ended": { "type": ["string", "null"] },
+              "turns": { "type": "integer" },
+              "cost": { "type": "number" },
+              "uncached_cost": { "type": "number" },
+              "models": { "type": "array", "items": { "type": "string" } },
+              "unpriced_turns": { "type": "integer" },
+              "title": { "type": "string" }
+            }
+          }
+        },
+        "calibration": {
+          "description": "Measured history, so the projector's numbers come from this machine rather than a guess. Percentiles are null when the sample is empty.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tokens_per_turn", "turns_per_session", "cache_hit_ratio"],
+          "properties": {
+            "tokens_per_turn": {
+              "description": "model to effort to percentiles.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["turns", "input_p50", "output_p50", "cache_read_p50", "cache_write_p50", "output_p90"],
+                  "properties": {
+                    "turns": { "type": "integer" },
+                    "input_p50": { "type": ["integer", "null"] },
+                    "output_p50": { "type": ["integer", "null"] },
+                    "cache_read_p50": { "type": ["integer", "null"] },
+                    "cache_write_p50": { "type": ["integer", "null"] },
+                    "output_p90": { "type": ["integer", "null"] }
+                  }
+                }
+              }
+            },
+            "turns_per_session": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["p50", "p90", "mean"],
+              "properties": {
+                "p50": { "type": ["integer", "null"] },
+                "p90": { "type": ["integer", "null"] },
+                "mean": { "type": ["number", "null"] }
+              }
+            },
+            "cache_hit_ratio": { "type": ["number", "null"] }
+          }
+        },
+        "synthetic": {
+          "description": "Present and true only on `data/demo.json`. A real scan never carries it.",
+          "const": true
+        },
+        "synthetic_note": { "type": "string" }
+      }
+    },
+
+    "tokenizer": {
+      "description": "What `releve-repo.py --calibrate --out` writes, and section 5 loads. Generated, never hand-authored: a typed factor is how one language once shipped carrying another's number, presented as measured.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "method", "verified", "note", "error_bar", "error_bar_note",
+        "default", "default_note", "measured_source", "measured", "languages",
+        "extensions", "filenames", "skip_extensions", "skip_dirs", "max_file_bytes"
+      ],
+      "properties": {
+        "schema": { "const": "releve-tokenizer/v1" },
+        "method": { "type": "string" },
+        "verified": { "type": "string" },
+        "note": { "type": "string" },
+        "error_bar": { "type": ["number", "null"] },
+        "error_bar_note": { "type": "string" },
+        "default": {
+          "description": "Characters per token for a language with no measured factor.",
+          "type": "number"
+        },
+        "default_note": { "type": "string" },
+        "measured_source": {
+          "description": "How the factors were fitted, in the file that carries them, including what the fit does not settle.",
+          "type": "object",
+          "required": ["responses_scored", "responses_attributed", "method", "machine", "reproduce"],
+          "properties": {
+            "responses_scored": { "type": "integer" },
+            "responses_attributed": { "type": "integer" },
+            "method": { "type": "string" },
+            "machine": { "type": "string" },
+            "corroboration": { "type": "string" },
+            "wide_spread": { "type": "string" },
+            "reproduce": { "type": "string" }
+          }
+        },
+        "measured": {
+          "description": "Only the languages actually fitted from transcripts, with the sample behind each. A language in `languages` but not here inherits a neighbour's factor or the default.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["factor", "median", "p25", "p75", "responses", "chars"],
+            "properties": {
+              "factor": { "type": "number" },
+              "median": { "type": "number" },
+              "p25": { "type": "number" },
+              "p75": { "type": "number" },
+              "responses": { "type": "integer" },
+              "chars": { "type": "integer" }
+            }
+          }
+        },
+        "languages": {
+          "description": "language to characters per token.",
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "filenames": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "skip_extensions": { "type": "array", "items": { "type": "string" } },
+        "skip_dirs": { "type": "array", "items": { "type": "string" } },
+        "max_file_bytes": { "type": "integer" }
+      }
+    },
+
+    "repo": {
+      "description": "What `releve-repo.py` writes, and what `countFolder()` in the browser produces for the same tree. The two counters were made to agree on an identical tree; `skipped` is where they drift first, because the script prunes directories and the browser filters a whole FileList.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "generated", "generator", "root", "discovery", "tokenizer", "totals", "languages", "files", "skipped"],
+      "properties": {
+        "schema": { "const": "releve-repo/v1" },
+        "generated": { "type": "string" },
+        "generator": { "type": "string" },
+        "root": { "type": "string" },
+        "discovery": {
+          "description": "`git ls-files` where the path is a repo, `filesystem walk` where it is not. Inside this monorepo, `projects/*` is excluded by the root repo, so a project that is not its own repo takes the fallback.",
+          "enum": ["git ls-files", "filesystem walk"]
+        },
+        "tokenizer": {
+          "description": "Provenance travels with the count, so a file read away from its terminal still carries its own caveat. Which keys are present depends on `mode`: `flat_factor` on `chars`, the table fields on `calibrated`.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "note", "error_bar"],
+          "properties": {
+            "mode": { "enum": ["api", "calibrated", "chars"] },
+            "note": { "type": ["string", "null"] },
+            "error_bar": { "type": ["number", "null"] },
+            "error_bar_note": { "type": "string" },
+            "table_verified": { "type": "string" },
+            "measured_languages": { "type": "array", "items": { "type": "string" } },
+            "flat_factor": { "type": "number" },
+            "table": {
+              "description": "Where the factor table was read from: a path, or the URL it was fetched from.",
+              "type": "string"
+            }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files", "bytes", "chars", "tokens"],
+          "properties": {
+            "files": { "type": "integer" },
+            "bytes": { "type": "integer" },
+            "chars": { "type": "integer" },
+            "tokens": { "type": "integer" }
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["language", "files", "bytes", "chars", "tokens"],
+            "properties": {
+              "language": { "type": "string" },
+              "files": { "type": "integer" },
+              "bytes": { "type": "integer" },
+              "chars": { "type": "integer" },
+              "tokens": { "type": "integer" }
+            }
+          }
+        },
+        "files": {
+          "description": "The heaviest files only, capped at 40. Not the whole tree: the totals are, and a full file list is what makes this document large enough to be awkward to share.",
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "language", "bytes", "tokens"],
+            "properties": {
+              "path": { "type": "string" },
+              "language": { "type": "string" },
+              "bytes": { "type": "integer" },
+              "tokens": { "type": "integer" }
+            }
+          }
+        },
+        "skipped": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["binary", "ignored", "too_large", "unknown", "unreadable"],
+          "properties": {
+            "binary": { "type": "integer" },
+            "ignored": { "type": "integer" },
+            "too_large": { "type": "integer" },
+            "unknown": { "type": "integer" },
+            "unreadable": { "type": "integer" }
+          }
+        },
+        "projection": {
+          "description": "Present only with `--project`. `sources` names where each input came from, because a projection seeded from measured history and one seeded from a default are the same shape and not the same claim. `levers` is sorted by absolute effect, and merges iterations with turns per iteration: only their product reaches the bill.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "iterations", "turns_per_iteration", "total_turns", "cache_hit_ratio", "sources", "rates", "tokens", "cost", "levers"],
+          "properties": {
+            "model": { "type": "string" },
+            "effort": { "type": ["string", "null"] },
+            "iterations": { "type": "integer" },
+            "turns_per_iteration": { "type": ["integer", "number"] },
+            "total_turns": { "type": ["integer", "number"] },
+            "cache_hit_ratio": { "type": ["number", "null"] },
+            "sources": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["per_turn_medians", "turns_per_iteration", "cache_hit_ratio"],
+              "properties": {
+                "per_turn_medians": { "type": "string" },
+                "turns_per_iteration": { "type": "string" },
+                "cache_hit_ratio": { "type": "string" }
+              }
+            },
+            "rates": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["input", "output"],
+              "properties": {
+                "input": { "type": ["number", "null"] },
+                "output": { "type": ["number", "null"] }
+              }
+            },
+            "tokens": { "$ref": "#/$defs/tokens" },
+            "cost": { "$ref": "#/$defs/cost" },
+            "plan_cost": { "type": ["number", "null"] },
+            "levers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["lever", "delta", "share"],
+                "properties": {
+                  "lever": { "type": "string" },
+                  "delta": { "type": "number" },
+                  "share": { "type": ["number", "null"] }
+                }
+              }
+            }
+          }
+        },
+        "rates": {
+          "description": "Present when the scan priced its tokens. `provenance` is the rate card it read, which is a local path when the default was used.",
+          "type": "object",
+          "required": ["version", "verified", "source"],
+          "properties": {
+            "version": { "type": ["string", "null"] },
+            "verified": { "type": ["string", "null"] },
+            "source": { "type": ["string", "null"] },
+            "provenance": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "rates": {
+      "description": "`data/rates.json`, the one hand-authored file, taken from the public pricing page with a `verified` date. Documented at the top level only: the per-model shape is asserted by `data/testcases.json` through both engines, which is a stronger check than a type.",
+      "type": "object",
+      "required": ["schema", "version", "verified", "source", "currency", "unit", "multipliers", "models"],
+      "properties": {
+        "schema": { "const": "releve-rates/v1" },
+        "version": { "type": "string" },
+        "verified": { "type": "string" },
+        "source": { "type": "string" },
+        "seeded_from": { "type": "string" },
+        "currency": { "type": "string" },
+        "unit": { "type": "string" },
+        "note": { "type": "string" },
+        "multipliers": {
+          "description": "Multipliers of base input. Cache rates are derived from these and never typed per model.",
+          "type": "object"
+        },
+        "service_tiers": { "type": "object" },
+        "backends": { "type": "object" },
+        "models": { "type": "object" }
+      }
+    },
+
+    "testcases": {
+      "description": "The fixture both engines assert against: `scripts/test_cost.py` for Python, `selfCheck()` in `js/cost.js` for the browser. Documented at the top level only, because a case's own shape is checked by being executed.",
+      "type": "object",
+      "required": ["schema", "rates_version", "tolerance", "cases", "dedup"],
+      "properties": {
+        "schema": { "const": "releve-testcases/v1" },
+        "rates_version": { "type": "string" },
+        "note": { "type": "string" },
+        "tolerance": { "type": "number" },
+        "cases": { "type": "array" },
+        "dedup": { "type": "array" }
+      }
+    },
+
+    "view": {
+      "description": "What the site's Export button writes: the filtered view as read on screen, not a fresh scan. Documented at the top level only, since it is an output nothing reads back in. `exact` states whether the numbers are exact; `caveats` carries the notes shown beside them.",
+      "type": "object",
+      "required": ["schema", "exported", "note", "source", "window", "plan", "rate_card", "exact", "caveats", "totals", "cache", "series", "breakdown", "unpriced", "excluded", "quality"],
+      "properties": {
+        "schema": { "const": "releve-view/v1" },
+        "exported": { "type": "string" },
+        "note": { "type": "string" },
+        "source": { "type": ["string", "null"] },
+        "window": { "type": "object" },
+        "facet": { "type": ["object", "null"] },
+        "plan": { "type": ["object", "number", "null"] },
+        "rate_card": { "type": "object" },
+        "rate_overrides": { "type": "object" },
+        "exact": { "type": "boolean" },
+        "caveats": { "type": "array" },
+        "totals": { "type": "object" },
+        "cache": { "type": "object" },
+        "series": { "type": "array" },
+        "breakdown": { "type": "object" },
+        "unpriced": { "type": ["object", "null"] },
+        "excluded": { "type": ["object", "null"] },
+        "quality": { "type": ["object", "null"] }
+      }
+    }
+  }
+}

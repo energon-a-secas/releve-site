@@ -14,6 +14,7 @@ modules, no build, no backend, nothing uploaded (releve.neorgon.com)
 ```bash
 make serve      # http://localhost:8874
 make test       # the 49-case pricing fixture, Python side
+make schema     # every data/*.json against data/schema.json
 make mine       # scan real transcripts into data/local.json (gitignored)
 make demo       # regenerate data/demo.json, with a leak check
 make parity     # releve-scan.py and releve-mini.py must agree to the cent
@@ -72,6 +73,16 @@ a script's input or output:
 | `demo.json` | `releve/v1` | `make-demo.py`; synthetic, published |
 | `local.json` | `releve/v1` | `make mine`; real, gitignored, never committed |
 | `releve-repo.json` | `releve-repo/v1` | `releve-repo.py`, or `countFolder()` in the browser |
+| `schema.json` | `releve-schemas` (the contract itself) | by hand, from the writers; asserted by `make schema` |
+
+`make schema` checks every file above against `data/schema.json`, and `make mine`
+and `make demo` run it on what they just wrote. `releve/v1` and `releve-repo/v1`
+are **closed**: an undocumented key is a failure, because those two are what the
+site reads back, and a field added to a scanner and not to the viewer is how the
+two start disagreeing. `scripts/check-schema.py` is a validator for the subset of
+JSON Schema the file uses, and it **rejects a keyword it cannot enforce** rather
+than skipping it, so the schema cannot quietly grow a constraint that nothing
+checks.
 
 Cache rates are **derived** from base input times a multiplier, never typed per
 model, so correcting a base rate can never leave a stale cache rate behind.

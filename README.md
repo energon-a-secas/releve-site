@@ -149,10 +149,16 @@ one code path.
 make test           # the 49-case fixture plus the embedded rate-table sync check
 make parity         # asserts releve-scan.py and releve-mini.py agree to the cent
 make demo           # regenerate data/demo.json, with a leak check on the result
+make schema         # every data/*.json against the contract in data/schema.json
 ```
 
 Run `make test` before any edit to `js/cost.js` or `scripts/releve_cost.py`. The
 site runs the same fixture in the browser and prints the verdict in section 8.
+
+`data/schema.json` documents every document these scripts write, field by field.
+The two the site reads back, `releve/v1` and `releve-repo/v1`, are closed
+contracts: a key that is not in the schema fails `make schema`, which is also run
+by `make mine` and `make demo` on whatever they just wrote.
 
 ---
 

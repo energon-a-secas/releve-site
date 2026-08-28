@@ -10,6 +10,7 @@ help:
 	@echo "  make kill     Kill this project's HTTP server"
 	@echo ""
 	@echo "  make test     Pricing engine parity fixture (run before any engine edit)"
+	@echo "  make schema   Check every data/*.json against data/schema.json"
 	@echo "  make mine     Scan your own transcripts → data/local.json (gitignored)"
 	@echo "  make demo     Regenerate the public synthetic dataset → data/demo.json"
 	@echo "  make parity   Assert releve-scan.py and releve-mini.py agree to the cent"
@@ -23,12 +24,21 @@ help:
 test:
 	@python3 scripts/test_cost.py
 
+# ── Data contract ──────────────────────────────────────────────────────────────
+# data/schema.json documents every document a script writes or the site reads,
+# and this asserts it. The site and the scanners agree on those shapes by
+# convention, which is exactly the kind of agreement that rots silently.
+.PHONY: schema
+schema:
+	@python3 scripts/check-schema.py
+
 # ── Datasets ──────────────────────────────────────────────────────────────────
 # Real numbers on localhost, synthetic numbers in public, one code path:
 # js/ingest.js prefers data/local.json when it exists and falls back to demo.
 .PHONY: mine
 mine:
 	@python3 scripts/releve-scan.py --out data/local.json
+	@python3 scripts/check-schema.py data/local.json >/dev/null && echo "  contract ok"
 
 .PHONY: demo
 demo:
@@ -36,6 +46,7 @@ demo:
 	@if grep -qE "$${USER:-__no_user__}|/Users/|/home/|dev/Personal" data/demo.json; then \
 		echo "FAIL: demo.json contains a real path or username"; exit 1; \
 	else echo "  leak check clean"; fi
+	@python3 scripts/check-schema.py data/demo.json >/dev/null && echo "  contract ok"
 
 # ── Script parity ─────────────────────────────────────────────────────────────
 # The two scanners share one engine, so a disagreement means one of them reads

@@ -392,6 +392,20 @@ python3 releve-repo.py . --out releve-repo.json</code>
             </p>
             <div id="scriptList" class="stack stack--tight"></div>
           </div>
+
+          <div class="card card--flat stack stack--tight">
+            <h3 class="section__title" style="font-size:var(--text-base)">The file format</h3>
+            <p class="prose" style="margin:0">
+              Every file a script writes carries its own <code>schema</code> string,
+              and <a href="data/schema.json" target="_blank" rel="noopener">data/schema.json</a>
+              documents all six of them field by field: what a scan writes, what the
+              repo counter writes, the fitted tokenizer table, the rate card, the
+              pricing fixture, and the export this page produces. The two the site
+              reads back are closed contracts, so a field added to a scanner and not
+              to the schema fails <code>make schema</code> rather than turning up as
+              a quietly wrong number here.
+            </p>
+          </div>
         </section>
 
       </div>
