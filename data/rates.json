@@ -1,0 +1,166 @@
+{
+  "schema": "releve-rates/v1",
+  "version": "2026-08-27",
+  "verified": "2026-08-27",
+  "source": "https://claude.com/pricing",
+  "seeded_from": "projects/agentlore-site/js/content/models.js (VERIFIED 2026-08-03)",
+  "currency": "USD",
+  "unit": "per 1M tokens",
+  "note": "Base input and output rates are typed per model. Cache and batch rates are DERIVED from base input by the multipliers below, never typed per model, so correcting a base rate can never leave a stale cache rate behind.",
+  "multipliers": {
+    "cache_write_5m": 1.25,
+    "cache_write_1h": 2.0,
+    "cache_read": 0.1,
+    "batch": 0.5,
+    "verify": "cache_write_5m and cache_read are confirmed against models.js (cacheWrite = 1.25x in, cacheRead = 0.1x in, for all four current Anthropic models). cache_write_1h = 2.0x is the documented 1-hour TTL multiplier but is NOT independently verified in this repo. It only affects turns with cache_creation.ephemeral_1h_input_tokens > 0."
+  },
+  "service_tiers": {
+    "note": "usage.service_tier on each turn. The multiplier scales every rate, base and cache alike. A null multiplier means the tier's pricing is not a simple multiple of standard, so the turn is priced at standard and flagged tier_assumed rather than guessed at.",
+    "standard": { "multiplier": 1.0, "status": "verified" },
+    "batch": { "multiplier": 0.5, "status": "documented", "note": "Batch API is half price." },
+    "priority": { "multiplier": null, "status": "needs_verification", "note": "Priority tier carries a premium that is not published as a flat multiple. Priced at standard, flagged." }
+  },
+  "backends": {
+    "api": { "multiplier": 1.0, "status": "verified" },
+    "bedrock": { "multiplier": null, "status": "needs_verification", "note": "Partner-operated, separate pricing. Null is unknown, never zero." },
+    "vertex": { "multiplier": null, "status": "needs_verification", "note": "Partner-operated, separate pricing. Null is unknown, never zero." }
+  },
+  "models": {
+    "claude-opus-5": {
+      "display_name": "Claude Opus 5",
+      "family": "opus",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 5.0, "output": 25.0 }
+      ],
+      "speed": {
+        "fast": { "input": 10.0, "output": 50.0, "note": "Fast mode research preview, priced 2x standard." }
+      }
+    },
+    "claude-fable-5": {
+      "display_name": "Claude Fable 5",
+      "family": "fable",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 10.0, "output": 50.0 }
+      ]
+    },
+    "claude-mythos-5": {
+      "display_name": "Claude Mythos 5",
+      "family": "fable",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 10.0, "output": 50.0 }
+      ]
+    },
+    "claude-sonnet-5": {
+      "display_name": "Claude Sonnet 5",
+      "family": "sonnet",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 64000,
+      "periods": [
+        { "from": null, "to": "2026-08-31", "input": 2.0, "output": 10.0, "note": "Introductory pricing." },
+        { "from": "2026-09-01", "to": null, "input": 3.0, "output": 15.0, "note": "Introductory pricing ends, input rises 50%." }
+      ]
+    },
+    "claude-opus-4-8": {
+      "display_name": "Claude Opus 4.8",
+      "family": "opus",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 5.0, "output": 25.0 }
+      ],
+      "speed": {
+        "fast": { "input": 10.0, "output": 50.0 }
+      }
+    },
+    "claude-opus-4-7": {
+      "display_name": "Claude Opus 4.7",
+      "family": "opus",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 5.0, "output": 25.0 }
+      ]
+    },
+    "claude-opus-4-6": {
+      "display_name": "Claude Opus 4.6",
+      "family": "opus",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 5.0, "output": 25.0 }
+      ]
+    },
+    "claude-opus-4-5": {
+      "display_name": "Claude Opus 4.5",
+      "family": "opus",
+      "provider": "anthropic",
+      "context": 200000,
+      "periods": [
+        { "from": null, "to": null, "input": 5.0, "output": 25.0 }
+      ]
+    },
+    "claude-sonnet-4-6": {
+      "display_name": "Claude Sonnet 4.6",
+      "family": "sonnet",
+      "provider": "anthropic",
+      "context": 1000000,
+      "max_output": 128000,
+      "periods": [
+        { "from": null, "to": null, "input": 3.0, "output": 15.0 }
+      ]
+    },
+    "claude-sonnet-4-5": {
+      "display_name": "Claude Sonnet 4.5",
+      "family": "sonnet",
+      "provider": "anthropic",
+      "context": 200000,
+      "periods": [
+        { "from": null, "to": null, "input": 3.0, "output": 15.0 }
+      ]
+    },
+    "claude-haiku-4-5": {
+      "display_name": "Claude Haiku 4.5",
+      "family": "haiku",
+      "provider": "anthropic",
+      "context": 200000,
+      "max_output": 64000,
+      "periods": [
+        { "from": null, "to": null, "input": 1.0, "output": 5.0 }
+      ]
+    },
+    "claude-3-5-haiku": {
+      "display_name": "Claude Haiku 3.5",
+      "family": "haiku",
+      "provider": "anthropic",
+      "context": 200000,
+      "periods": [
+        { "from": null, "to": null, "input": 0.8, "output": 4.0 }
+      ]
+    },
+    "kimi-k3": {
+      "display_name": "Kimi K3",
+      "provider": "moonshot",
+      "periods": null,
+      "unpriced_reason": "Non-Anthropic model reached through a router. No rate is published in this rate card, so its tokens are counted and reported but never priced. Unknown is not zero."
+    },
+    "<synthetic>": {
+      "display_name": "Synthetic (local)",
+      "provider": "none",
+      "excluded": true,
+      "excluded_reason": "Claude Code writes <synthetic> for messages it generates locally without an API call. Never billed, so it is excluded from every total rather than priced at zero."
+    }
+  }
+}

@@ -1,0 +1,80 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#ca8a04"
+    lineColor: "#eab308"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#fffbeb"
+    clusterBorder: "#fde68a"
+    edgeLabelBackground: "#fef9c3"
+    mainBkg: "#0f172a"
+    nodeBorder: "#ca8a04"
+    titleColor: "#422006"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    tx[("~/.claude/projects/**/*.jsonl\n1.4 GB, three nesting tiers")]
+
+    subgraph Scripts["Python 3, stdlib only, curl and run"]
+        mini["releve-mini.py\nOne number, ~70 lines"]
+        scan["releve-scan.py\nFull engine, writes releve.json"]
+        repo["releve-repo.py\nCounts a tree, projects work forward"]
+        engine["releve_cost.py\nTHE PRICING ENGINE"]
+        tests["test_cost.py\n49 fixture cases"]
+        mini --> engine
+        scan --> engine
+        repo --> engine
+        tests --> engine
+    end
+
+    tx --> mini
+    tx --> scan
+    tx -. "--calibrate\nmeasures chars per token" .-> repo
+    tree[("any git tree")] --> repo
+
+    subgraph Contract["Shared contract, the only thing stopping drift"]
+        rates[("data/rates.json\nreleve-rates/v1, dated periods")]
+        cases[("data/testcases.json\n46 pricing + 3 dedup cases")]
+        tok[("data/tokenizer.json\nreleve-tokenizer/v1, measured factors")]
+    end
+
+    engine --> rates
+    tests --> cases
+    repo --> tok
+
+    scan --> out[("releve.json\nreleve/v1, aggregates only")]
+    repo --> rout[("releve-repo.json\nreleve-repo/v1")]
+
+    out -->|"make mine, gitignored"| local[("data/local.json")]
+    out -->|"make-demo.py"| demo[("data/demo.json\nsynthetic, published")]
+
+    subgraph Site["releve.neorgon.com, ES modules, no build"]
+        ingest["ingest.js\nlocal.json, else demo.json,\nelse a dropped file"]
+        cost["cost.js\nTHE SAME ENGINE, in JS"]
+        selfcheck["selfCheck()\nasserts the same 49 cases"]
+        filters["filters.js\ndate, project, model, skill,\neffort, lane"]
+        render["render.js\n8 sections"]
+        widgets["widgets/\nkpi timeline breakdown cache\nrepo projector ratecard method"]
+        ingest --> cost
+        cost --> selfcheck
+        ingest --> filters
+        filters --> render
+        render --> widgets
+    end
+
+    local --> ingest
+    demo --> ingest
+    rout --> widgets
+    rates --> cost
+    cases --> selfcheck
+    tok --> widgets
+
+    widgets --> reader([Reader])
+
+    classDef engineNode fill:#ca8a04,stroke:#422006,color:#fffbeb
+    class engine,cost engineNode

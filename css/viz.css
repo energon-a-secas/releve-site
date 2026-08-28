@@ -1,0 +1,225 @@
+/* ══════════════════════════════════════════════════════════════
+ * @neorgon/ui — Viz Kit
+ * Standardized, dependency-free graph + box assets.
+ *
+ * Keyed off the _template design tokens (--bg, --surface-1, --border,
+ * --accent, --text-*, --radius-*, --space-*). Sites that already load the
+ * template CSS inherit them; the block below only *fallbacks* missing ones
+ * so the kit also works standalone.
+ *
+ * Pair with js/viz.js (pure SVG-string builders). All motion is gated
+ * behind prefers-reduced-motion. All numbers use tabular-nums.
+ * ════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Fallbacks — real values come from _template tokens when present. */
+  --viz-surface: var(--surface-1, rgba(255, 255, 255, .03));
+  --viz-border: var(--border-subtle, rgba(255, 255, 255, .07));
+  --viz-border-strong: var(--border, rgba(255, 255, 255, .1));
+  --viz-grid: rgba(255, 255, 255, .06);
+  --viz-grid-2: rgba(255, 255, 255, .09);
+  --viz-ink: var(--text-primary, #f9f9f9);
+  --viz-ink-2: var(--text-secondary, #cacaca);
+  --viz-ink-mute: var(--text-muted, rgba(255, 255, 255, .55));
+  --viz-accent: var(--accent, #0063e5);
+  --viz-accent-bright: var(--accent-bright, #0080ff);
+  --viz-radius: var(--radius-sm, 6px);
+  --viz-mono: var(--mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+
+  /* Categorical data palette (order matters — used by multi-series charts). */
+  --viz-c1: #0080ff;
+  --viz-c2: #a78bfa;
+  --viz-c3: #34d399;
+  --viz-c4: #fbbf24;
+  --viz-c5: #f472b6;
+  --viz-c6: #22d3ee;
+  --viz-c7: #fb923c;
+  --viz-c8: #4ade80;
+
+  /* Sequential ramp for heatmaps (low → high). */
+  --viz-heat-0: rgba(255, 255, 255, .04);
+  --viz-heat-1: rgba(0, 128, 255, .22);
+  --viz-heat-2: rgba(0, 128, 255, .42);
+  --viz-heat-3: rgba(0, 128, 255, .66);
+  --viz-heat-4: rgba(0, 128, 255, .92);
+}
+
+/* ── Box: chart frame / panel ──────────────────────────────── */
+.viz-panel {
+  padding: 12px 14px 8px;
+  border-radius: var(--viz-radius);
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+}
+.viz-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.viz-title {
+  font-size: .6rem;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  color: var(--viz-ink-mute);
+  font-weight: 600;
+}
+.viz-scale {
+  font-family: var(--viz-mono);
+  font-size: .64rem;
+  color: var(--viz-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.viz-svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* ── Box: stat grid (KPI tiles) ────────────────────────────── */
+.viz-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+.viz-stat {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px;
+  border-radius: var(--viz-radius);
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+}
+.viz-stat__label {
+  font-size: .58rem;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  color: var(--viz-ink-mute);
+}
+.viz-stat__value {
+  font-family: var(--viz-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--viz-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.viz-stat__delta { font-size: .64rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-stat__delta--up { color: var(--ok, #22c55e); }
+.viz-stat__delta--down { color: var(--danger-hover, #f43f5e); }
+.viz-stat__delta--flat { color: var(--viz-ink-mute); }
+
+/* ── Shared SVG element classes ────────────────────────────── */
+.viz-axis { stroke: var(--viz-border-strong); stroke-width: 1; }
+.viz-grid { stroke: var(--viz-grid); stroke-width: 1; }
+.viz-ref { stroke: color-mix(in srgb, var(--warn, #f59e0b) 45%, transparent); stroke-width: 1; stroke-dasharray: 3 3; }
+.viz-tick {
+  font-family: var(--viz-mono);
+  font-size: 8px;
+  fill: var(--viz-ink-mute);
+  letter-spacing: .04em;
+}
+.viz-label { fill: var(--viz-ink-2); font-size: 11px; }
+.viz-value-label {
+  font-family: var(--viz-mono);
+  font-size: 9px;
+  fill: var(--viz-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bars */
+.viz-bar { transition: opacity var(--dur-fast, 120ms); }
+.viz-bar:hover { opacity: .82; }
+
+/* Line / area */
+.viz-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.viz-dot { stroke: var(--bg, #040714); stroke-width: 1; }
+
+/* Radar */
+.viz-radar-ring { fill: none; stroke: var(--viz-grid-2); }
+.viz-radar-spoke { stroke: var(--viz-grid-2); }
+.viz-radar-area { fill-opacity: .18; stroke-width: 2; stroke-linejoin: round; }
+
+/* Gauge / ring */
+.viz-gauge-track { fill: none; stroke: var(--viz-grid-2); }
+.viz-gauge-fill { fill: none; stroke-linecap: round; }
+.viz-gauge-value {
+  font-family: var(--viz-mono);
+  font-weight: 700;
+  fill: var(--viz-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Donut */
+.viz-donut-seg { transition: opacity var(--dur-fast, 120ms); }
+.viz-donut-seg:hover { opacity: .82; }
+.viz-donut-center {
+  font-family: var(--viz-mono);
+  font-weight: 700;
+  fill: var(--viz-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Heatmap */
+.viz-cell { transition: opacity var(--dur-fast, 120ms); }
+.viz-cell:hover { opacity: .75; }
+
+/* ── Fun effects (opt-in, reduced-motion gated) ────────────── */
+/* ping — a data point radiates outward */
+.viz-fx-ping { transform-box: fill-box; transform-origin: center; animation: viz-ping 1.8s ease-out infinite; }
+@keyframes viz-ping {
+  0%   { transform: scale(1);   opacity: .9; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+/* sweep — radar-style rotating wedge */
+.viz-fx-sweep { animation: viz-spin 8s linear infinite; }
+@keyframes viz-spin { to { transform: rotate(360deg); } }
+
+/* draw-line — path traces itself in on mount */
+.viz-fx-draw {
+  stroke-dasharray: var(--viz-len, 1000);
+  stroke-dashoffset: var(--viz-len, 1000);
+  animation: viz-draw 1.1s var(--ease-snap, cubic-bezier(.34, 1.56, .64, 1)) forwards;
+}
+@keyframes viz-draw { to { stroke-dashoffset: 0; } }
+
+/* area-in — gradient area fades/rises in */
+.viz-fx-area-in { animation: viz-area-in .5s ease-out both; transform-origin: bottom; }
+@keyframes viz-area-in { from { opacity: 0; transform: scaleY(.6); } to { opacity: 1; transform: scaleY(1); } }
+
+/* grow — bars/segments scale up from their baseline */
+.viz-fx-grow { transform-box: fill-box; transform-origin: bottom; animation: viz-grow .5s var(--ease-snap, cubic-bezier(.34, 1.56, .64, 1)) both; }
+@keyframes viz-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* pulse — soft attention pulse for a highlighted node */
+.viz-fx-pulse { animation: viz-pulse 2s ease-in-out infinite; }
+@keyframes viz-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-fx-ping, .viz-fx-sweep, .viz-fx-draw, .viz-fx-area-in, .viz-fx-grow, .viz-fx-pulse {
+    animation: none;
+  }
+  .viz-fx-draw { stroke-dashoffset: 0; }
+}
+
+/* ── States: skeleton / empty / error ──────────────────────── */
+.viz-skeleton {
+  height: var(--viz-skel-h, 120px);
+  border-radius: var(--viz-radius);
+  background: linear-gradient(90deg, var(--viz-surface) 25%, var(--surface-2, rgba(255,255,255,.06)) 50%, var(--viz-surface) 75%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes viz-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .viz-skeleton { animation: none; } }
+.viz-empty, .viz-error {
+  padding: 20px 14px;
+  text-align: center;
+  font-size: var(--text-sm, .875rem);
+  border-radius: var(--viz-radius);
+  border: 1px dashed var(--viz-border);
+  background: var(--viz-surface);
+}
+.viz-empty { color: var(--viz-ink-mute); }
+.viz-error { color: var(--danger-hover, #f43f5e); border-color: color-mix(in srgb, var(--danger-hover, #f43f5e) 40%, transparent); }

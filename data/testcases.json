@@ -1,0 +1,639 @@
+{
+  "schema": "releve-testcases/v1",
+  "rates_version": "2026-08-27",
+  "note": "The contract between scripts/releve_cost.py and js/cost.js. Token counts are deliberately round so every expected dollar figure can be checked by hand against data/rates.json. expect.tokens is a partial dict: only the keys listed are asserted. expect.uncached is asserted only where present.",
+  "tolerance": 1e-9,
+  "cases": [
+    {
+      "name": "opus5-input-only",
+      "why": "Base input rate. 1M tokens at $5/MTok.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-opus-5", "usage": { "input_tokens": 1000000 } },
+      "expect": {
+        "canonical": "claude-opus-5",
+        "status": "priced",
+        "cost": { "input": 5.0, "output": 0.0, "cache_write": 0.0, "cache_read": 0.0, "total": 5.0 },
+        "estimated_cache_split": false
+      }
+    },
+    {
+      "name": "opus5-output-only",
+      "why": "Base output rate. 1M tokens at $25/MTok.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-opus-5", "usage": { "output_tokens": 1000000 } },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 0.0, "output": 25.0, "cache_write": 0.0, "cache_read": 0.0, "total": 25.0 }
+      }
+    },
+    {
+      "name": "opus5-cache-read",
+      "why": "Cache read is 0.1x input, so $0.50/MTok. 10M reads is $5.00. This is the single largest line on a real statement.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-opus-5", "usage": { "cache_read_input_tokens": 10000000 } },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 0.0, "output": 0.0, "cache_write": 0.0, "cache_read": 5.0, "total": 5.0 }
+      }
+    },
+    {
+      "name": "opus5-cache-write-5m",
+      "why": "5-minute cache write is 1.25x input, so $6.25/MTok.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation": { "ephemeral_5m_input_tokens": 1000000, "ephemeral_1h_input_tokens": 0 } }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 1000000, "cache_write_1h": 0 },
+        "cost": { "cache_write": 6.25, "total": 6.25 },
+        "estimated_cache_split": false
+      }
+    },
+    {
+      "name": "opus5-cache-write-1h",
+      "why": "Rule 3. 1-hour cache write is 2.0x input, so $10.00/MTok, not the 1.25x the old script charged everything.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 1000000 } }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 0, "cache_write_1h": 1000000 },
+        "cost": { "cache_write": 10.0, "total": 10.0 },
+        "estimated_cache_split": false
+      }
+    },
+    {
+      "name": "opus5-cache-write-both-ttls",
+      "why": "Both TTLs on one turn, each at its own multiplier: 20k at 6.25 plus 8k at 10.00.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation": { "ephemeral_5m_input_tokens": 20000, "ephemeral_1h_input_tokens": 8000 } }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "cache_write": 0.205, "total": 0.205 }
+      }
+    },
+    {
+      "name": "opus5-realistic-turn",
+      "why": "The shape of an actual mid-session turn: small fresh input, large cache read, some cache written.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 4000,
+          "output_tokens": 2000,
+          "cache_read_input_tokens": 400000,
+          "cache_creation": { "ephemeral_5m_input_tokens": 20000, "ephemeral_1h_input_tokens": 8000 }
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 0.02, "output": 0.05, "cache_write": 0.205, "cache_read": 0.2, "total": 0.475 }
+      }
+    },
+    {
+      "name": "opus5-fast-mode",
+      "why": "Rule 4. speed: fast bills $10/$50, double standard. A fast session priced at standard rates is under-reported by half.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "output_tokens": 100000, "speed": "fast" }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 10.0, "output": 5.0, "total": 15.0 }
+      }
+    },
+    {
+      "name": "opus5-fast-mode-cache",
+      "why": "Fast mode doubles the base input rate, and cache rates derive from base input, so a 5m write costs 12.50/MTok. Stated as an assumption in rates.json, not verified.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "speed": "fast",
+          "cache_creation": { "ephemeral_5m_input_tokens": 1000000, "ephemeral_1h_input_tokens": 0 },
+          "cache_read_input_tokens": 1000000
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "cache_write": 12.5, "cache_read": 1.0, "total": 13.5 }
+      }
+    },
+    {
+      "name": "opus5-speed-standard-explicit",
+      "why": "An explicit speed: standard must not trip the override lookup.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "speed": "standard" }
+      },
+      "expect": { "status": "priced", "cost": { "input": 5.0, "total": 5.0 } }
+    },
+    {
+      "name": "opus5-thinking-is-a-label",
+      "why": "thinking_tokens are already inside output_tokens. Carried as a label, never added to cost. 10k output at $25/MTok is $0.25 whether 8k of it was reasoning or none.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "output_tokens": 10000, "output_tokens_details": { "thinking_tokens": 8000 } }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "output": 10000, "thinking": 8000 },
+        "cost": { "output": 0.25, "total": 0.25 }
+      }
+    },
+    {
+      "name": "iterations-single-agrees-with-top-level",
+      "why": "Rule 5, the common case. 77,063 of 77,072 real turns with an iterations array have exactly one entry, and it equals the top-level counters. Reading the array is a no-op here, which is what makes it safe to always prefer it.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 1000000,
+          "output_tokens": 100000,
+          "iterations": [{ "input_tokens": 1000000, "output_tokens": 100000 }]
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "input": 1000000, "output": 100000 },
+        "cost": { "input": 5.0, "output": 2.5, "total": 7.5 },
+        "from_iterations": true
+      }
+    },
+    {
+      "name": "iterations-multi-replaces-top-level",
+      "why": "Rule 5, the case that matters. On a multi-iteration turn the top-level counters hold only the LAST iteration, verified on 9 of 9 real ones, so the sum is the billable figure. Reading the top level alone would charge 400k input where 1M was billed.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 400000,
+          "output_tokens": 300000,
+          "iterations": [
+            { "input_tokens": 600000, "output_tokens": 400000 },
+            { "input_tokens": 400000, "output_tokens": 300000 }
+          ]
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "input": 1000000, "output": 700000 },
+        "cost": { "input": 5.0, "output": 17.5, "total": 22.5 },
+        "from_iterations": true
+      }
+    },
+    {
+      "name": "iterations-never-added-to-top-level",
+      "why": "The other half of Rule 5. Summing the array AND the top level would bill 1.4M input here instead of 1M. The array replaces, it does not augment.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 400000,
+          "cache_read_input_tokens": 400000,
+          "iterations": [
+            { "input_tokens": 600000, "cache_read_input_tokens": 600000 },
+            { "input_tokens": 400000, "cache_read_input_tokens": 400000 }
+          ]
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "input": 1000000, "cache_read": 1000000 },
+        "cost": { "input": 5.0, "cache_read": 0.5, "total": 5.5 }
+      }
+    },
+    {
+      "name": "iterations-carry-the-ttl-split",
+      "why": "Every real iteration carries its own cache_creation split, so the 5m and 1h totals accumulate across iterations at their own multipliers.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 100000 },
+          "iterations": [
+            { "cache_creation": { "ephemeral_5m_input_tokens": 400000, "ephemeral_1h_input_tokens": 0 } },
+            { "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 100000 } }
+          ]
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 400000, "cache_write_1h": 100000 },
+        "cost": { "cache_write": 3.5, "total": 3.5 },
+        "estimated_cache_split": false,
+        "from_iterations": true
+      }
+    },
+    {
+      "name": "iterations-with-zero-top-level",
+      "why": "Three real turns record zeros at the top level and the whole turn inside iterations, hiding 2M cache-read tokens. Preferring the array recovers them.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0,
+          "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 88 },
+          "iterations": [{
+            "input_tokens": 2, "output_tokens": 909, "cache_read_input_tokens": 1000000,
+            "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 88 }
+          }]
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "output": 909, "cache_read": 1000000, "cache_write_1h": 88 },
+        "cost": { "cache_read": 0.5, "total": 0.523615 },
+        "from_iterations": true
+      }
+    },
+    {
+      "name": "empty-iterations-array-falls-back",
+      "why": "An empty array is not a breakdown. 38,356 real turns have no iterations at all, and they must still price off the top-level counters.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "iterations": [] }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "input": 1000000 },
+        "cost": { "total": 5.0 },
+        "from_iterations": false
+      }
+    },
+    {
+      "name": "opus5-dated-model-id",
+      "why": "Longest declared prefix. A dated snapshot id resolves to its family rate rather than falling through to UNPRICED.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-opus-5-20260601", "usage": { "input_tokens": 1000000 } },
+      "expect": { "canonical": "claude-opus-5", "status": "priced", "cost": { "total": 5.0 } }
+    },
+    {
+      "name": "opus5-region-prefixed-id",
+      "why": "Bedrock and Vertex ids carry a region prefix. Suffix match keeps them priced at API rates, which the Method page states is an approximation for those backends.",
+      "date": "2026-08-15",
+      "message": { "model": "us.anthropic.claude-opus-5", "usage": { "input_tokens": 1000000 } },
+      "expect": { "canonical": "claude-opus-5", "status": "priced", "cost": { "total": 5.0 } }
+    },
+    {
+      "name": "fable5-mixed",
+      "why": "Fable 5 at $10/$50 is double Opus 5. The old script priced it at Sonnet 4, under-reporting by roughly 70%.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-fable-5",
+        "usage": { "input_tokens": 100000, "output_tokens": 20000 }
+      },
+      "expect": {
+        "canonical": "claude-fable-5",
+        "status": "priced",
+        "cost": { "input": 1.0, "output": 1.0, "total": 2.0 }
+      }
+    },
+    {
+      "name": "sonnet5-before-price-change",
+      "why": "Dated periods. On 2026-08-31 Sonnet 5 is still on introductory pricing, $2/$10.",
+      "date": "2026-08-31",
+      "message": {
+        "model": "claude-sonnet-5",
+        "usage": { "input_tokens": 1000000, "output_tokens": 1000000 }
+      },
+      "expect": { "status": "priced", "cost": { "input": 2.0, "output": 10.0, "total": 12.0 } }
+    },
+    {
+      "name": "sonnet5-on-price-change",
+      "why": "On 2026-09-01 the same turn costs $3/$15. A single flat rate would misprice one side of this boundary.",
+      "date": "2026-09-01",
+      "message": {
+        "model": "claude-sonnet-5",
+        "usage": { "input_tokens": 1000000, "output_tokens": 1000000 }
+      },
+      "expect": { "status": "priced", "cost": { "input": 3.0, "output": 15.0, "total": 18.0 } }
+    },
+    {
+      "name": "sonnet5-cache-read-follows-the-period",
+      "why": "Cache rates derive from that period's input rate, so the cache read also changes on 2026-09-01: 0.2 becomes 0.3.",
+      "date": "2026-09-15",
+      "message": { "model": "claude-sonnet-5", "usage": { "cache_read_input_tokens": 1000000 } },
+      "expect": { "status": "priced", "cost": { "cache_read": 0.3, "total": 0.3 } }
+    },
+    {
+      "name": "sonnet5-cache-read-before-change",
+      "why": "The same turn a month earlier reads at 0.2, not 0.3.",
+      "date": "2026-08-01",
+      "message": { "model": "claude-sonnet-5", "usage": { "cache_read_input_tokens": 1000000 } },
+      "expect": { "status": "priced", "cost": { "cache_read": 0.2, "total": 0.2 } }
+    },
+    {
+      "name": "sonnet5-undated-turn-uses-current-rates",
+      "why": "With no date, the last period wins. An undated turn is priced at today's rate rather than silently at the cheapest one.",
+      "date": null,
+      "message": {
+        "model": "claude-sonnet-5",
+        "usage": { "input_tokens": 1000000, "output_tokens": 1000000 }
+      },
+      "expect": { "status": "priced", "cost": { "total": 18.0 } }
+    },
+    {
+      "name": "sonnet46-input-and-cache-write",
+      "why": "Sonnet 4.6 at $3/$15, 5m write at 3.75.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-sonnet-4-6",
+        "usage": {
+          "input_tokens": 1000000,
+          "cache_creation": { "ephemeral_5m_input_tokens": 1000000, "ephemeral_1h_input_tokens": 0 }
+        }
+      },
+      "expect": { "status": "priced", "cost": { "input": 3.0, "cache_write": 3.75, "total": 6.75 } }
+    },
+    {
+      "name": "haiku45-all-three",
+      "why": "Haiku 4.5 at $1/$5, read at 0.10.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-haiku-4-5",
+        "usage": { "input_tokens": 1000000, "output_tokens": 1000000, "cache_read_input_tokens": 1000000 }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 1.0, "output": 5.0, "cache_read": 0.1, "total": 6.1 }
+      }
+    },
+    {
+      "name": "haiku35-dated-id",
+      "why": "The older naming shape, claude-3-5-haiku-*, at $0.80/MTok input.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-3-5-haiku-20241022", "usage": { "input_tokens": 1000000 } },
+      "expect": { "canonical": "claude-3-5-haiku", "status": "priced", "cost": { "total": 0.8 } }
+    },
+    {
+      "name": "tier-standard-explicit",
+      "why": "The tier every real turn carries. Multiplier 1.0, nothing assumed.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "service_tier": "standard" }
+      },
+      "expect": { "status": "priced", "cost": { "total": 5.0 }, "tier_assumed": false }
+    },
+    {
+      "name": "tier-batch-halves-every-rate",
+      "why": "Batch is half price, and the cache rates derive from the halved input: read becomes 0.25/MTok, not 0.50.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 1000000, "output_tokens": 1000000,
+          "cache_read_input_tokens": 1000000, "service_tier": "batch"
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 2.5, "output": 12.5, "cache_read": 0.25, "total": 15.25 },
+        "tier_assumed": false
+      }
+    },
+    {
+      "name": "tier-batch-cache-write",
+      "why": "A 5m write on batch is 1.25x the halved input, so 3.125/MTok.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "service_tier": "batch",
+          "cache_creation": { "ephemeral_5m_input_tokens": 1000000, "ephemeral_1h_input_tokens": 0 }
+        }
+      },
+      "expect": { "status": "priced", "cost": { "cache_write": 3.125, "total": 3.125 } }
+    },
+    {
+      "name": "tier-priority-priced-at-standard-and-flagged",
+      "why": "Priority carries a premium that is not a flat multiple of standard. Priced at standard and flagged, so the page can say the figure is a floor rather than quietly inventing a premium.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "service_tier": "priority" }
+      },
+      "expect": { "status": "priced", "cost": { "total": 5.0 }, "tier_assumed": true }
+    },
+    {
+      "name": "tier-unknown-is-flagged-not-discounted",
+      "why": "A tier the rate card has never heard of must not silently change the bill, and must not pass unremarked either.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000000, "service_tier": "flex" }
+      },
+      "expect": { "status": "priced", "cost": { "total": 5.0 }, "tier_assumed": true }
+    },
+    {
+      "name": "unpriced-known-non-anthropic",
+      "why": "Rule 2. kimi-k3 is declared with no rate. Its tokens are counted and reported in their own bucket, and its cost is not a number at all rather than zero.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "kimi-k3",
+        "usage": { "input_tokens": 500000, "output_tokens": 100000, "cache_read_input_tokens": 2000000 }
+      },
+      "expect": {
+        "canonical": "kimi-k3",
+        "status": "unpriced",
+        "tokens": { "input": 500000, "output": 100000, "cache_read": 2000000 },
+        "cost": { "input": 0.0, "output": 0.0, "cache_write": 0.0, "cache_read": 0.0, "total": 0.0 }
+      }
+    },
+    {
+      "name": "unpriced-unknown-model",
+      "why": "Rule 2, the case that broke the old script. A model absent from the rate card lands in UNPRICED. It is never quietly priced as some other model.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-something-7", "usage": { "input_tokens": 1000000 } },
+      "expect": {
+        "canonical": "claude-something-7",
+        "status": "unpriced",
+        "tokens": { "input": 1000000 },
+        "cost": { "total": 0.0 }
+      }
+    },
+    {
+      "name": "unpriced-missing-model",
+      "why": "A turn with usage but no model field cannot be priced and must not be attributed to anything.",
+      "date": "2026-08-15",
+      "message": { "usage": { "input_tokens": 1000000 } },
+      "expect": { "canonical": null, "status": "unpriced", "cost": { "total": 0.0 } }
+    },
+    {
+      "name": "excluded-synthetic",
+      "why": "Claude Code writes <synthetic> for locally generated messages. Never billed, so excluded outright and counted separately rather than priced at zero.",
+      "date": "2026-08-15",
+      "message": { "model": "<synthetic>", "usage": { "input_tokens": 1000, "output_tokens": 50 } },
+      "expect": {
+        "canonical": "<synthetic>",
+        "status": "excluded",
+        "tokens": { "input": 1000, "output": 50 },
+        "cost": { "total": 0.0 }
+      }
+    },
+    {
+      "name": "legacy-flat-cache-creation",
+      "why": "Older transcripts carry only cache_creation_input_tokens with no TTL split. Treated as 5m, the default TTL, and the row is flagged estimated so the site can say which totals are approximate.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation_input_tokens": 1000000 }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 1000000, "cache_write_1h": 0 },
+        "cost": { "cache_write": 6.25, "total": 6.25 },
+        "estimated_cache_split": true
+      }
+    },
+    {
+      "name": "legacy-empty-split-object",
+      "why": "An empty cache_creation object carries no split either, so it falls back the same way and is still flagged.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation": {}, "cache_creation_input_tokens": 800000 }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 800000 },
+        "cost": { "cache_write": 5.0, "total": 5.0 },
+        "estimated_cache_split": true
+      }
+    },
+    {
+      "name": "split-with-only-the-1h-key",
+      "why": "A split object naming just one TTL is still a split. Nothing is estimated.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "cache_creation": { "ephemeral_1h_input_tokens": 500000 } }
+      },
+      "expect": {
+        "status": "priced",
+        "tokens": { "cache_write_5m": 0, "cache_write_1h": 500000 },
+        "cost": { "cache_write": 5.0, "total": 5.0 },
+        "estimated_cache_split": false
+      }
+    },
+    {
+      "name": "split-present-and-zero-is-not-estimated",
+      "why": "A turn that wrote no cache but declares the split keys is exact, not estimated. Guards against flagging most of a real transcript.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 1000,
+          "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0 }
+        }
+      },
+      "expect": { "status": "priced", "cost": { "total": 0.005 }, "estimated_cache_split": false }
+    },
+    {
+      "name": "zero-cache-creation-is-not-estimated",
+      "why": "A flat zero is not an estimate of anything.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 1000, "cache_creation_input_tokens": 0 }
+      },
+      "expect": { "status": "priced", "cost": { "total": 0.005 }, "estimated_cache_split": false }
+    },
+    {
+      "name": "all-zero-usage",
+      "why": "A turn that billed nothing is priced and worth zero. Distinct from unpriced.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0 }
+      },
+      "expect": { "status": "priced", "cost": { "total": 0.0 } }
+    },
+    {
+      "name": "no-usage-object",
+      "why": "Some assistant entries carry no usage at all. They must contribute zero rather than raise.",
+      "date": "2026-08-15",
+      "message": { "model": "claude-opus-5" },
+      "expect": { "canonical": "claude-opus-5", "status": "priced", "cost": { "total": 0.0 } }
+    },
+    {
+      "name": "counterfactual-no-cache",
+      "why": "The cache-lab number. Actual is $1.13; the same turn with no cache, every read and write repriced as fresh input, is $5.505. That 4.9x gap is the story the dashboard tells.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": {
+          "input_tokens": 1000,
+          "cache_read_input_tokens": 1000000,
+          "cache_creation": { "ephemeral_5m_input_tokens": 100000, "ephemeral_1h_input_tokens": 0 }
+        }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "input": 0.005, "cache_write": 0.625, "cache_read": 0.5, "total": 1.13 },
+        "uncached": 5.505
+      }
+    },
+    {
+      "name": "counterfactual-includes-output-unchanged",
+      "why": "The counterfactual reprices input only. Output is output either way.",
+      "date": "2026-08-15",
+      "message": {
+        "model": "claude-opus-5",
+        "usage": { "output_tokens": 100000, "cache_read_input_tokens": 1000000 }
+      },
+      "expect": {
+        "status": "priced",
+        "cost": { "output": 2.5, "cache_read": 0.5, "total": 3.0 },
+        "uncached": 7.5
+      }
+    }
+  ],
+  "dedup": [
+    {
+      "name": "one-response-many-blocks",
+      "why": "Rule 6. A response that thought, spoke and called a tool is written as three entries with three uuids, each repeating the same usage. All three must key to one billed response, or the tokens are counted three times.",
+      "entries": [
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000001", "message": { "id": "msg_01aaa" } },
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000002", "message": { "id": "msg_01aaa" } },
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000003", "message": { "id": "msg_01aaa" } }
+      ],
+      "expect": { "keys": ["msg_01aaa", "msg_01aaa", "msg_01aaa"] }
+    },
+    {
+      "name": "distinct-responses-stay-distinct",
+      "why": "The rule must not over-collapse: two real responses are two bills.",
+      "entries": [
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000004", "message": { "id": "msg_01aaa" } },
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000005", "message": { "id": "msg_01bbb" } }
+      ],
+      "expect": { "keys": ["msg_01aaa", "msg_01bbb"] }
+    },
+    {
+      "name": "no-message-id-falls-back-to-uuid",
+      "why": "An entry with no message.id is still one turn. Falling back to the uuid counts it once rather than dropping it or merging every such entry together.",
+      "entries": [
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000006", "message": { "model": "claude-opus-5" } },
+        { "uuid": "6f1c0e8a-0000-4000-8000-000000000007" }
+      ],
+      "expect": {
+        "keys": [
+          "6f1c0e8a-0000-4000-8000-000000000006",
+          "6f1c0e8a-0000-4000-8000-000000000007"
+        ]
+      }
+    }
+  ]
+}

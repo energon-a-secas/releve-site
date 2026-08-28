@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Releve | Claude Code spend, read off the transcripts</title>
+  <meta name="description" content="Read your Claude Code spend off the transcripts: cost by model, project and skill, a cache lab, an editable rate card, and three scripts you run yourself">
+  <meta property="og:title" content="Releve: Claude Code spend, read off the transcripts">
+  <meta property="og:description" content="Cost by model, project and skill. A cache lab, an editable rate card, and the scripts that produced every number">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://releve.neorgon.com/">
+  <meta property="og:site_name" content="Neorgon">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Releve: Claude Code spend, read off the transcripts">
+  <meta name="twitter:description" content="Cost by model, project and skill, plus the scripts that produced every number">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://releve.neorgon.com/">
+  <meta property="og:locale" content="en_US">
+  <meta name="theme-color" content="#040714">
+  <meta property="og:image" content="https://releve.neorgon.com/og-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Releve: what your Claude Code work would cost">
+  <meta name="twitter:image" content="https://releve.neorgon.com/og-preview.jpg">
+  <!-- Footer Kit stamps -->
+  <meta name="neo-repo" content="https://github.com/energon-a-secas/releve-site">
+  <meta name="neo-version" content="v1.0.0">
+  <meta name="neo-updated" content="updated Aug 2026">
+  <link rel="icon" type="image/x-icon" href="https://cdn.neorgon.org/v1.0.0/favicon.ico" />
+  <!-- Fleet design tokens — canonical, do not redeclare locally (PROJECTS.md section 5) -->
+  <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/styles/base.css">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Viz Kit: every chart here is a builder from js/viz.js. Canonical source is
+       packages/neorgon-ui/{css/viz.css,js/viz.js} — do not edit these copies. -->
+  <link rel="stylesheet" href="css/viz.css">
+  <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css — the kit owns the header. -->
+  <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
+  <link rel="stylesheet" href="css/neorgon-header.css">
+  <link rel="stylesheet" href="css/neorgon-themes.css">
+  <link rel="stylesheet" href="https://cdn.neorgon.org/v1.0.0/header/season.css">
+  <script defer src="js/neorgon-header.js"></script>
+  <meta name="neo-theme-switcher" content="footer">
+  <!-- Neorgon Footer Kit (vendored). -->
+  <link rel="stylesheet" href="css/neorgon-footer.css">
+  <script defer src="js/neorgon-footer.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Releve",
+    "description": "Read your Claude Code spend off the transcripts: cost by model, project and skill, a cache lab, an editable rate card, and three scripts you run yourself.",
+    "url": "https://releve.neorgon.com/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "browserRequirements": "Requires JavaScript. All data is read in the browser; nothing is uploaded.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "Neorgon", "url": "https://neorgon.com/" }
+  }
+  </script>
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="header-bar" data-header-mode="app" data-header-skin="brass">
+    <div class="header-logo">
+      <a href="https://neorgon.com/" target="_blank" rel="noopener noreferrer">
+        <img src="https://cdn.neorgon.org/v1.0.0/energon-classic-logo.png" class="header-logo-img" alt="Logo">
+      </a>
+      <a href="./" class="header-title-link">
+        <h1>Releve</h1>
+        <div class="header-subtitle">Claude Code spend, read off the transcripts</div>
+      </a>
+    </div>
+
+    <div class="header-right">
+      <div class="header-actions">
+        <button class="btn btn--ghost btn--sm" id="loadDataBtn" data-keep-mobile>Load data</button>
+        <button class="btn btn--ghost btn--sm" id="exportBtn">Export view</button>
+        <button class="btn btn--ghost btn--sm" id="resetBtn">Reset</button>
+      </div>
+
+      <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
+        <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="shell">
+      <nav class="shell__rail" aria-label="Section" id="rail">
+        <a class="nav-link rail__link" href="#statement"><span class="rail__num">1</span>Statement</a>
+        <a class="nav-link rail__link" href="#timeline"><span class="rail__num">2</span>Timeline</a>
+        <a class="nav-link rail__link" href="#breakdowns"><span class="rail__num">3</span>Breakdowns</a>
+        <a class="nav-link rail__link" href="#cache"><span class="rail__num">4</span>Cache lab</a>
+        <a class="nav-link rail__link" href="#repo"><span class="rail__num">5</span>Repo scanner</a>
+        <a class="nav-link rail__link" href="#projector"><span class="rail__num">6</span>Projector</a>
+        <a class="nav-link rail__link" href="#rates"><span class="rail__num">7</span>Rate card</a>
+        <a class="nav-link rail__link" href="#method"><span class="rail__num">8</span>Method</a>
+      </nav>
+
+      <div class="shell__main stack stack--loose">
+
+        <!-- ── 1. Statement ───────────────────────────────────── -->
+        <section class="section" id="statement" aria-labelledby="statement-title">
+          <div class="section__titles">
+            <h2 class="section__title" id="statement-title">Statement</h2>
+            <p class="section__lead">
+              Every assistant turn in the window, priced from its own model and its
+              own token counters. Two figures, because they answer different
+              questions.
+            </p>
+          </div>
+
+          <div class="source" id="sourceBanner" role="status">
+            <span class="source__tag">loading</span>
+            <span class="source__note">Reading the dataset.</span>
+          </div>
+
+          <div class="headline" id="headline"></div>
+
+          <div class="note" id="statementNote"></div>
+
+          <div id="statementStats"></div>
+
+          <!-- Filters apply to sections 2, 3 and 4. Sticky, so the conditions
+               under which a number is true stay on screen with the number. -->
+          <div class="filters" id="filters" aria-label="Active filters"></div>
+        </section>
+
+        <!-- ── 2. Timeline ────────────────────────────────────── -->
+        <section class="section" id="timeline" aria-labelledby="timeline-title">
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="timeline-title">Timeline</h2>
+              <p class="section__lead">
+                Daily cost, stacked by model. Pick a window and every section
+                below recomputes against it.
+              </p>
+            </div>
+            <div class="toolbar" id="windowPresets"></div>
+          </div>
+
+          <div class="toolbar">
+            <label class="field"><span>From</span><input type="date" class="input" id="fromDate"></label>
+            <label class="field"><span>To</span><input type="date" class="input" id="toDate"></label>
+            <label class="field"><span>Bucket</span>
+              <select class="select" id="bucketSel">
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="timelineChart"></div>
+          <div class="legend" id="timelineLegend"></div>
+          <div id="timelineTrend" class="grid"></div>
+        </section>
+
+        <!-- ── 3. Breakdowns ──────────────────────────────────── -->
+        <section class="section" id="breakdowns" aria-labelledby="breakdowns-title">
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="breakdowns-title">Breakdowns</h2>
+              <p class="section__lead">
+                The same total, cut eight ways. Click a row to filter the whole
+                page by it; click again to clear.
+              </p>
+            </div>
+            <div class="toolbar" id="dimTabs"></div>
+          </div>
+
+          <div id="breakdownBars"></div>
+          <div class="table-wrap"><table class="table" id="breakdownTable"></table></div>
+          <div class="note" id="breakdownNote" hidden></div>
+        </section>
+
+        <!-- ── 4. Cache lab ───────────────────────────────────── -->
+        <section class="section" id="cache" aria-labelledby="cache-title">
+          <div class="section__titles">
+            <h2 class="section__title" id="cache-title">Cache lab</h2>
+            <p class="section__lead">
+              Almost all of the token volume here is cache traffic, so almost all
+              of the bill is decided by cache pricing. A read costs a tenth of
+              fresh input; a one-hour write costs double it.
+            </p>
+          </div>
+
+          <div id="cacheHeadline"></div>
+          <div class="grid grid--wide">
+            <div id="cacheMix"></div>
+            <div id="cacheRatio"></div>
+          </div>
+          <div class="note note--good" id="cacheNote"></div>
+          <div class="table-wrap"><table class="table" id="cacheTable"></table></div>
+        </section>
+
+        <!-- ── 5. Repo scanner ────────────────────────────────── -->
+        <section class="section" id="repo" aria-labelledby="repo-title">
+          <div class="section__titles">
+            <h2 class="section__title" id="repo-title">Repo scanner</h2>
+            <p class="section__lead">
+              What a codebase costs to put in front of a model. Run
+              <code>releve-repo.py</code> and drop the result here, or pick a
+              folder and count it in the browser. Both count characters and
+              divide by a per-language factor measured from real transcripts,
+              which lands within about 20% of a whole response;
+              <code>--tokenizer api</code> counts exactly.
+            </p>
+          </div>
+
+          <div class="cmd">
+            <code>curl -O https://releve.neorgon.com/scripts/releve-repo.py
+curl -O https://releve.neorgon.com/scripts/releve_cost.py
+curl -O https://releve.neorgon.com/data/tokenizer.json
+python3 releve-repo.py . --out releve-repo.json</code>
+            <button class="btn btn--ghost btn--sm cmd__copy" data-copy>Copy</button>
+          </div>
+
+          <!-- A group, not role="button": a button's subtree is presentational,
+               which hid the two real buttons below, including "count a folder in
+               the browser", an action with no other route to it. -->
+          <div class="drop" id="repoDrop" role="group"
+               aria-label="Load a repo scan: drop a file, or use the buttons">
+            <strong>Drop <code class="inline">releve-repo.json</code> here</strong>
+            <span>or <button class="btn btn--ghost btn--sm" id="repoPick">choose a file</button>
+              &middot; <button class="btn btn--ghost btn--sm" id="repoFolder">count a folder in the browser</button></span>
+            <span class="num--muted">Nothing is uploaded. Both paths read the file locally.</span>
+          </div>
+          <input type="file" id="repoFile" accept=".json,application/json" hidden>
+          <input type="file" id="repoDir" webkitdirectory directory multiple hidden>
+
+          <div id="repoOut"></div>
+        </section>
+
+        <!-- ── 6. Projector ───────────────────────────────────── -->
+        <section class="section" id="projector" aria-labelledby="projector-title">
+          <div class="section__titles">
+            <h2 class="section__title" id="projector-title">Projector</h2>
+            <p class="section__lead">
+              What the next stretch of work costs, from the per-turn medians
+              measured in the loaded dataset rather than a guess. The sensitivity
+              ranking says which lever actually moves the number.
+            </p>
+          </div>
+
+          <div class="grid grid--wide">
+            <div class="card card--flat stack stack--tight">
+              <div class="toolbar">
+                <label class="field"><span>Model</span><select class="select" id="projModel"></select></label>
+                <label class="field"><span>Effort</span><select class="select" id="projEffort"></select></label>
+              </div>
+              <div class="slider">
+                <label class="slider__name" for="projIter">Iterations</label>
+                <span class="slider__val" id="projIterVal">20</span>
+                <input type="range" id="projIter" min="1" max="500" step="1" value="20">
+              </div>
+              <div class="slider">
+                <label class="slider__name" for="projTurns">Turns per iteration</label>
+                <span class="slider__val" id="projTurnsVal">40</span>
+                <input type="range" id="projTurns" min="1" max="2000" step="1" value="40">
+              </div>
+              <div class="slider">
+                <label class="slider__name" for="projHit">Cache hit ratio</label>
+                <span class="slider__val" id="projHitVal">97.5%</span>
+                <input type="range" id="projHit" min="0" max="100" step="0.5" value="97.5">
+              </div>
+              <div class="slider">
+                <label class="slider__name" for="projTtl">Share of writes at the 1-hour TTL</label>
+                <span class="slider__val" id="projTtlVal">67%</span>
+                <input type="range" id="projTtl" min="0" max="100" step="1" value="67">
+              </div>
+              <div class="toolbar">
+                <label class="field"><span>Plan cost, $/month</span>
+                  <input type="number" class="input input--num" id="planCost" min="0" step="5" value="100">
+                </label>
+                <button class="btn btn--ghost btn--sm" id="projCalibrate">Reset to measured</button>
+              </div>
+            </div>
+            <div class="stack stack--tight">
+              <div id="projOut"></div>
+              <div id="projSensitivity"></div>
+            </div>
+          </div>
+          <div class="note" id="projNote"></div>
+        </section>
+
+        <!-- ── 7. Rate card ───────────────────────────────────── -->
+        <section class="section" id="rates" aria-labelledby="rates-title">
+          <div class="section__header">
+            <div class="section__titles">
+              <h2 class="section__title" id="rates-title">Rate card</h2>
+              <p class="section__lead">
+                Every rate used on this page, and where it came from. Edit one and
+                the whole page recomputes from tokens.
+              </p>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn--ghost btn--sm" id="ratesReset">Reset rates</button>
+              <a class="btn btn--ghost btn--sm" href="data/rates.json" download>Download card</a>
+            </div>
+          </div>
+
+          <div class="note" id="ratesProvenance"></div>
+          <div class="table-wrap"><table class="table" id="ratesTable"></table></div>
+
+          <div class="grid">
+            <div class="card card--flat stack stack--tight">
+              <h3 class="section__title" style="font-size:var(--text-base)">Cache multipliers</h3>
+              <p class="prose" style="margin:0">
+                Cache rates are derived from base input, never typed per model, so
+                correcting a base rate can never leave a stale cache rate behind.
+              </p>
+              <div id="multipliersTable"></div>
+            </div>
+            <div class="card card--flat stack stack--tight">
+              <h3 class="section__title" style="font-size:var(--text-base)">Service tiers</h3>
+              <p class="prose" style="margin:0">
+                A tier scales every rate. A tier whose pricing is not a flat
+                multiple of standard is priced at standard and counted as an
+                assumption, not guessed at.
+              </p>
+              <div id="tiersTable"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 8. Method ──────────────────────────────────────── -->
+        <section class="section" id="method" aria-labelledby="method-title">
+          <div class="section__titles">
+            <h2 class="section__title" id="method-title">Method</h2>
+            <p class="section__lead">
+              How each number is derived, what it excludes, and where to check it.
+            </p>
+          </div>
+
+          <div class="note" id="parityBox"></div>
+
+          <div class="card card--flat">
+            <h3 class="section__title" style="font-size:var(--text-base);margin-bottom:var(--space-4)">The six rules</h3>
+            <ol class="prose">
+              <li><strong>Resolve rates per turn</strong>, from that turn's own
+                <code>message.model</code>. A session that switched models mid-way
+                is priced by turn, not by whichever model happened to be last in
+                the file.</li>
+              <li><strong>Never substitute a different model's rates.</strong>
+                Exact id, then the longest declared prefix or suffix, then
+                <em>unpriced</em>. An unpriced model is named and counted, never
+                folded into a total and never treated as free.</li>
+              <li><strong>Split the cache writes.</strong> Five-minute writes bill
+                at 1.25&times; base input, one-hour writes at 2&times;. A turn
+                carrying only the flat counter is assumed five-minute and flagged.</li>
+              <li><strong>Honour <code>usage.speed</code>.</strong> Fast mode on
+                Opus bills double, so a fast session must not be priced as standard.</li>
+              <li><strong>A non-empty <code>usage.iterations</code> replaces the
+                top-level counters</strong>, and is never added to them. Adding
+                them double-counts; ignoring the array under-reports every
+                multi-iteration turn.</li>
+              <li><strong>Count each response once, keyed on
+                <code>message.id</code></strong> rather than on the entry's
+                <code>uuid</code>. A response is written to the transcript one
+                entry per content block, and every one of those entries repeats
+                the same <code>usage</code> object: a turn that thought, spoke and
+                called a tool appears three times and is billed once. On the
+                author's machine 116,402 entries are 52,078 responses, and the
+                per-<code>uuid</code> reading reports 30.0B cache-read tokens
+                against a true 12.9B. Resuming a session replays its history into
+                a new transcript on top of that, and the replay is sometimes the
+                more complete record, so the copy with the most billable tokens
+                wins.</li>
+            </ol>
+          </div>
+
+          <div class="card card--flat">
+            <h3 class="section__title" style="font-size:var(--text-base);margin-bottom:var(--space-4)">What this dataset says about itself</h3>
+            <div id="methodQuality"></div>
+          </div>
+
+          <div class="card card--flat">
+            <h3 class="section__title" style="font-size:var(--text-base);margin-bottom:var(--space-4)">Limits, stated</h3>
+            <div class="deflist prose" id="methodLimits"></div>
+          </div>
+
+          <div class="card card--flat stack stack--tight">
+            <h3 class="section__title" style="font-size:var(--text-base)">Run it yourself</h3>
+            <p class="prose" style="margin:0">
+              Python 3, standard library only, no network calls unless you ask for
+              them. Each script prints the date of the rates it used.
+            </p>
+            <div id="scriptList" class="stack stack--tight"></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Load-data modal: file, folder, or URL. Everything is read in the browser. -->
+  <div class="modal" id="loadModal" hidden>
+    <div class="modal__backdrop" data-modal-close tabindex="-1" aria-hidden="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="loadModalTitle" tabindex="-1">
+      <!-- div, not <header>/<footer>: role="dialog" on a div is not a sectioning
+           root, so those elements would map to banner and contentinfo and the
+           open modal would give the page a second one of each. -->
+      <div class="modal__header">
+        <h2 id="loadModalTitle">Load your own numbers</h2>
+        <button type="button" class="btn btn--ghost btn--icon" data-modal-close aria-label="Close dialog">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal__body stack stack--tight">
+        <p class="prose" style="margin:0">
+          The dataset on this page is synthetic. For your own, run the scanner and
+          load the file it writes. It never leaves your machine: this page reads
+          it with the File API and makes no upload.
+        </p>
+        <div class="cmd">
+          <code>curl -O https://releve.neorgon.com/scripts/releve-scan.py
+curl -O https://releve.neorgon.com/scripts/releve_cost.py
+python3 releve-scan.py --days 30 --out releve.json</code>
+          <button class="btn btn--ghost btn--sm cmd__copy" data-copy>Copy</button>
+        </div>
+        <div class="drop" id="dataDrop" role="group"
+             aria-label="Load your own data: drop a file, or use the button">
+          <strong>Drop <code class="inline">releve.json</code> here</strong>
+          <span>or a raw <code class="inline">.jsonl</code> transcript, which is priced in the browser</span>
+          <button class="btn btn--secondary btn--sm" id="dataPick">Choose a file</button>
+        </div>
+        <input type="file" id="dataFile" accept=".json,.jsonl,application/json" hidden>
+        <p class="prose" style="margin:0">
+          Sharing a file? Run it with <code>--anonymize</code> first: that hashes
+          project labels and drops paths, branch names and session titles.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn--ghost" id="loadDemoAgain">Back to the demo</button>
+        <button type="button" class="btn btn--primary" data-modal-close>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="neo-footer" data-footer-mode="app">
+    Reads your transcripts in your browser. Nothing is uploaded.
+    <template data-neo-disclaimer data-label="How the dollars are derived"
+              data-title="These figures are a counterfactual, not an invoice">
+      <p>Every dollar on this page is tokens multiplied by a published list rate.
+      It is what the same work would have cost through the API, which is not what
+      a subscription charged, and not what any invoice says.</p>
+      <p>Rates are transcribed by hand from the public pricing page and carry the
+      date they were checked. Cache multipliers (1.25&times; for a five-minute
+      write, 2&times; for one hour, 0.1&times; for a read) are the documented
+      multipliers of base input and are the one constant here that is not verified
+      against a bill. Partner-cloud rates are left null rather than guessed.</p>
+      <p>Not affiliated with Anthropic. Claude and Claude Code are their marks.</p>
+    </template>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
