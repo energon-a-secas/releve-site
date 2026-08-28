@@ -23,14 +23,24 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from releve_cost import (  # noqa: E402
-    EXCLUDED,
-    UNPRICED,
-    billable_total,
-    load_rates,
-    price_turn,
-    turn_key,
-)
+try:
+    from releve_cost import (  # noqa: E402
+        EXCLUDED,
+        UNPRICED,
+        billable_total,
+        load_rates,
+        price_turn,
+        turn_key,
+    )
+except ImportError:
+    # Downloading one of the two files is the likeliest first mistake, because
+    # the script that this replaces was a single curl. Say what to fetch rather
+    # than showing a traceback.
+    sys.exit(
+        "releve_cost.py is missing: it holds the rate table and the pricing rules.\n"
+        "  curl -O https://releve.neorgon.com/scripts/releve_cost.py\n"
+        "Then run this again from the same directory."
+    )
 
 
 def main():
