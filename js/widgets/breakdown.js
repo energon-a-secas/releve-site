@@ -10,6 +10,7 @@
 
 import { bars } from '../viz.js';
 import { DIMS } from '../state.js';
+import { geo } from './timeline.js';
 import {
   big, count, escHtml, money, pct,
 } from '../utils.js';
@@ -18,7 +19,7 @@ const TOP_BARS = 12;
 
 export function tabs(view) {
   return DIMS.map((d) => `<button class="chip${d.name === view.dim ? ' chip--on' : ''}" `
-    + `data-dim="${d.name}">${escHtml(d.label)}</button>`).join('');
+    + `aria-pressed="${d.name === view.dim}" data-dim="${d.name}">${escHtml(d.label)}</button>`).join('');
 }
 
 export function chart(view) {
@@ -32,14 +33,15 @@ export function chart(view) {
     value: r.cost.total,
     color: r.picked ? 'var(--accent-bright)' : undefined,
   })), {
-    width: 760,
+    width: geo().width,
     height: 200,
+    padL: 38,
     title: `Cost by ${(dim && dim.label) || view.dim}`,
     scale: priced.length < view.rows.length
       ? `top ${priced.length} of ${view.rows.length}`
       : `${view.rows.length} in total`,
     ariaLabel: `Cost by ${(dim && dim.label) || view.dim}`,
-    animate: true,
+    animate: view.animate !== false,
   });
 }
 
@@ -90,7 +92,8 @@ export function table(view) {
       ? `<span class="num">${escHtml(big(totalTokens(r)))}</span>`
       : '<span class="num num--muted" title="Not recorded per day for this cut">&#8195;</span>';
     return `<tr data-pick="${escHtml(r.key)}"${r.picked ? ' class="is-picked"' : ''}>
-      <td class="table__key" title="${escHtml(r.key)}">${escHtml(r.key)}</td>
+      <td class="table__key" title="${escHtml(r.key)}"><button class="table__pick" `
+      + `data-pick="${escHtml(r.key)}" aria-pressed="${!!r.picked}">${escHtml(r.key)}</button></td>
       <td class="n">${cost}</td>
       <td class="n"><span class="num">${escHtml(count(r.turns))}</span></td>
       <td class="n">${tokens}</td>

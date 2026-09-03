@@ -14,8 +14,16 @@ import {
   big, count, escHtml, money, money0, shortDate,
 } from '../utils.js';
 
-/** Must match the Viz Kit's internal padding for bars(). */
-export const GEO = { width: 760, height: 210, padL: 30, padR: 8 };
+/** Passed straight into bars(), which honors padL/padR, so the click mapping
+ *  in bucketAtPointer() and the drawn chart share one set of numbers. The 38px
+ *  gutter fits a five-digit tick ("999.9k"); 30px clipped "1,789".
+ *  A function, not a constant: 760 SVG units squeezed into a 327px phone column
+ *  rendered the 8px ticks at ~3.4 physical pixels. Half the units on a narrow
+ *  viewport keeps text near 1:1; events.js re-renders on a resize crossing. */
+export const geo = () => (
+  typeof matchMedia !== 'undefined' && matchMedia('(max-width: 700px)').matches
+    ? { width: 380, height: 170, padL: 38, padR: 6 }
+    : { width: 760, height: 210, padL: 38, padR: 8 });
 
 function bucketLabel(key, bucket) {
   if (bucket === 'month') {
@@ -32,7 +40,7 @@ export function presets(view) {
     const active = w.days === null
       ? view.window.full
       : view.window.days === w.days && !view.window.full;
-    return `<button class="chip${active ? ' chip--on' : ''}" data-window="${w.days ?? 'all'}">`
+    return `<button class="chip${active ? ' chip--on' : ''}" aria-pressed="${active}" data-window="${w.days ?? 'all'}">`
       + `${escHtml(w.label)}</button>`;
   }).join('');
 }
@@ -48,14 +56,22 @@ export function chart(view) {
     value: models.map((m) => slot.byModel[m] || 0),
   }));
 
+  // The same series as a real table, visually hidden: the SVG is one flat
+  // role=img, so this is the only way a screen reader or keyboard user can
+  // read the numbers the bars draw.
+  const srTable = `<table class="sr-only"><caption>Cost per ${escHtml(bucket)}</caption>
+    <thead><tr><th>${escHtml(bucket)}</th><th>cost</th></tr></thead><tbody>
+    ${series.map((slot) => `<tr><td>${escHtml(bucketLabel(slot.key, bucket))}</td><td>${escHtml(money(slot.cost))}</td></tr>`).join('')}
+    </tbody></table>`;
+
   return bars(data, {
-    ...GEO,
+    ...geo(),
     keys: models,
     title: `Cost per ${bucket}`,
     scale: money0(view.totals.cost.total),
     ariaLabel: `Cost per ${bucket}, stacked by model`,
-    animate: true,
-  });
+    animate: view.animate !== false,
+  }) + srTable;
 }
 
 /** The legend doubles as a model filter: the colours only mean something if you
@@ -76,7 +92,7 @@ export function legend(view) {
     const figure = priced
       ? `<span class="num num--muted">${money(totals.get(m) || 0)}</span>`
       : '<span class="num num--unknown">unpriced</span>';
-    return `<button class="chip${on ? ' chip--on' : ''}" data-facet="model" data-key="${escHtml(m)}">`
+    return `<button class="chip${on ? ' chip--on' : ''}" aria-pressed="${on}" data-facet="model" data-key="${escHtml(m)}">`
       + `<span style="width:9px;height:9px;border-radius:2px;background:var(--viz-c${(i % 8) + 1})"></span>`
       + `${escHtml(m.replace(/^claude-/, ''))} `
       + `${figure}</button>`;
@@ -91,6 +107,12 @@ export function trend(view) {
 
   const costs = per.map((d) => d.cost);
   const peak = per.reduce((a, b) => (b.cost > a.cost ? b : a), per[0]);
+  // A bill is usually one or two days of unusual work; name what the work ran
+  // on, not only what it cost.
+  const driver = Object.entries(peak.byModel || {}).sort((a, b) => b[1] - a[1])[0];
+  const driverNote = driver && driver[1] > peak.cost / 2
+    ? `, mostly ${driver[0].replace(/^claude-/, '')}`
+    : '';
   const active = per.filter((d) => d.turns > 0).length;
   const mean = active ? costs.reduce((a, b) => a + b, 0) / active : 0;
   const tokens = view.totals.tokens;
@@ -108,7 +130,7 @@ export function trend(view) {
     <div class="viz-panel">
       <div class="viz-head">
         <span class="viz-title">Daily shape</span>
-        <span class="viz-scale">${escHtml(shortDate(peak.date))} was the peak, ${escHtml(money0(peak.cost))}</span>
+        <span class="viz-scale">${escHtml(shortDate(peak.date))} was the peak, ${escHtml(money0(peak.cost))}${escHtml(driverNote)}</span>
       </div>
       ${spark(costs, { width: 320, height: 34, ariaLabel: 'Daily cost trend' })}
     </div>`;
@@ -124,8 +146,9 @@ export function bucketAtPointer(svg, clientX, n) {
   if (!svg || !n) return -1;
   const box = svg.getBoundingClientRect();
   if (!box.width) return -1;
-  const x = ((clientX - box.left) / box.width) * GEO.width;
-  const plot = GEO.width - GEO.padL - GEO.padR;
-  const i = Math.floor(((x - GEO.padL) / plot) * n);
+  const g = geo();
+  const x = ((clientX - box.left) / box.width) * g.width;
+  const plot = g.width - g.padL - g.padR;
+  const i = Math.floor(((x - g.padL) / plot) * n);
   return i >= 0 && i < n ? i : -1;
 }

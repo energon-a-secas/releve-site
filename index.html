@@ -137,26 +137,26 @@
           <div class="note" id="statementNote"></div>
 
           <div id="statementStats"></div>
-
-          <!-- Filters apply to sections 2, 3 and 4. Sticky, so the conditions
-               under which a number is true stay on screen with the number. -->
-          <div class="filters" id="filters" aria-label="Active filters"></div>
         </section>
+
+        <!-- Filters apply to sections 2, 3 and 4. A direct child of the main
+             column, not of section 1: sticky travel is bounded by the parent,
+             and inside the section it ran out of road before ever sticking. -->
+        <div class="filters" id="filters" aria-label="Active filters"></div>
 
         <!-- ── 2. Timeline ────────────────────────────────────── -->
         <section class="section" id="timeline" aria-labelledby="timeline-title">
-          <div class="section__header">
-            <div class="section__titles">
-              <h2 class="section__title" id="timeline-title">Timeline</h2>
-              <p class="section__lead">
-                Daily cost, stacked by model. Pick a window and every section
-                below recomputes against it.
-              </p>
-            </div>
-            <div class="toolbar" id="windowPresets"></div>
+          <div class="section__titles">
+            <h2 class="section__title" id="timeline-title">Timeline</h2>
+            <p class="section__lead">
+              Daily cost, stacked by model. Pick a window and every section
+              below recomputes against it.
+            </p>
           </div>
 
-          <div class="toolbar">
+          <!-- One row: the typed window, the bucket, and the presets that set
+               both. Two rows left ~500px empty beside three small fields. -->
+          <div class="toolbar toolbar--window">
             <label class="field"><span>From</span><input type="date" class="input" id="fromDate"></label>
             <label class="field"><span>To</span><input type="date" class="input" id="toDate"></label>
             <label class="field"><span>Bucket</span>
@@ -166,6 +166,7 @@
                 <option value="month">Month</option>
               </select>
             </label>
+            <div class="toolbar toolbar--presets" id="windowPresets"></div>
           </div>
 
           <div id="timelineChart"></div>
@@ -246,7 +247,7 @@ python3 releve-repo.py . --out releve-repo.json</code>
           <input type="file" id="repoFile" accept=".json,application/json" hidden>
           <input type="file" id="repoDir" webkitdirectory directory multiple hidden>
 
-          <div id="repoOut"></div>
+          <div id="repoOut" class="stack stack--tight"></div>
         </section>
 
         <!-- ── 6. Projector ───────────────────────────────────── -->

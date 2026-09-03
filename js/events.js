@@ -408,23 +408,52 @@ export function bindEvents() {
   document.addEventListener('click', (e) => {
     const t = e.target;
 
+    // Every control below lives in markup the render pass replaces wholesale,
+    // so the click destroyed the focused element and focus fell to <body>: a
+    // keyboard user lost their place on every filter change. Re-find the same
+    // control by the data attributes that identify it and put focus back.
+    const refocus = (sel) => { document.querySelector(sel)?.focus(); };
+
     const clear = t.closest('[data-clear]');
     if (clear) { clearFilter(clear.dataset.clear); return; }
 
     const win = t.closest('[data-window]');
-    if (win) { applyPreset(win.dataset.window); return; }
+    if (win) {
+      applyPreset(win.dataset.window);
+      refocus(`[data-window="${CSS.escape(win.dataset.window)}"]`);
+      return;
+    }
 
     const facet = t.closest('[data-facet]');
-    if (facet) { setFacet(facet.dataset.facet, facet.dataset.key); return; }
+    if (facet) {
+      setFacet(facet.dataset.facet, facet.dataset.key);
+      refocus(`[data-facet="${CSS.escape(facet.dataset.facet)}"][data-key="${CSS.escape(facet.dataset.key)}"]`);
+      return;
+    }
 
     const dim = t.closest('[data-dim]');
-    if (dim) { state.view.dim = dim.dataset.dim; render(state); return; }
+    if (dim) {
+      state.view.dim = dim.dataset.dim;
+      render(state);
+      refocus(`[data-dim="${CSS.escape(dim.dataset.dim)}"]`);
+      return;
+    }
 
     const sort = t.closest('[data-sort]');
-    if (sort) { sortBy(sort.dataset.sort); return; }
+    if (sort) {
+      sortBy(sort.dataset.sort);
+      refocus(`[data-sort="${CSS.escape(sort.dataset.sort)}"]`);
+      return;
+    }
 
-    const pick = t.closest('tr[data-pick]');
-    if (pick && state.derived) { setFacet(state.derived.dim, pick.dataset.pick); return; }
+    // [data-pick], not tr[data-pick]: the key cell now carries a real button
+    // with the same key, so the row action is reachable from the keyboard.
+    const pick = t.closest('[data-pick]');
+    if (pick && state.derived) {
+      setFacet(state.derived.dim, pick.dataset.pick);
+      refocus(`button[data-pick="${CSS.escape(pick.dataset.pick)}"]`);
+      return;
+    }
 
     if (t.closest('[data-open-load]')) { openModal('loadModal'); return; }
 
@@ -502,4 +531,13 @@ export function bindEvents() {
   wireDrop('dataDrop', 'dataFile', loadFile);
   wireDrop('repoDrop', 'repoFile', loadRepoFile);
   wireRail();
+
+  // Chart geometry is picked per render (timeline.geo(): 380 SVG units under
+  // 700px, 760 above), so a resize that crosses the boundary needs a repaint
+  // or the ticks render at half size on the side it landed on.
+  let wasNarrow = matchMedia('(max-width: 700px)').matches;
+  window.addEventListener('resize', debounce(() => {
+    const narrow = matchMedia('(max-width: 700px)').matches;
+    if (narrow !== wasNarrow) { wasNarrow = narrow; render(state); }
+  }, 200));
 }

@@ -21,6 +21,8 @@ import * as projector from './widgets/projector.js';
 import * as repo from './widgets/repo.js';
 import * as method from './widgets/method.js';
 
+let _animatedDoc = null;
+
 /** Rebuild everything from state. Returns the derived view so callers that need
  *  it (the exporter, the brush) do not rebuild it a second time. */
 export function render(s = state) {
@@ -35,6 +37,10 @@ export function render(s = state) {
 
   const view = buildView(s);
   s.derived = view;
+  // Charts animate when the dataset changes, not on every filter click or rate
+  // keystroke: the grow effect replaying under a typing hand reads as flicker.
+  view.animate = s.doc !== _animatedDoc;
+  _animatedDoc = s.doc;
 
   renderStatement(view);
   renderTimeline(view);
@@ -74,10 +80,16 @@ function renderTimeline(view) {
   const to = $('toDate');
   if (document.activeElement !== from) from.value = view.window.from || '';
   if (document.activeElement !== to) to.value = view.window.to || '';
-  from.min = view.window.allFrom || '';
-  from.max = view.window.allTo || '';
-  to.min = view.window.allFrom || '';
-  to.max = view.window.allTo || '';
+  // Chrome fires `change` per completed segment while a date is being typed,
+  // and any attribute write to the focused input resets its segment-typing
+  // buffer ("1" then "3" lands as 03, not 13). min/max only actually change
+  // when the dataset does, so skip the write when the value is already right.
+  const lo = view.window.allFrom || '';
+  const hi = view.window.allTo || '';
+  if (from.min !== lo) from.min = lo;
+  if (from.max !== hi) from.max = hi;
+  if (to.min !== lo) to.min = lo;
+  if (to.max !== hi) to.max = hi;
   $('bucketSel').value = view.bucket;
 }
 

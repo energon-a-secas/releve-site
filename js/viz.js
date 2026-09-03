@@ -12,6 +12,8 @@
  *   scale      right-aligned mono readout in the .viz-head frame
  *   ariaLabel  accessible name for the chart (defaults to title)
  *   width,height  SVG viewBox size (charts are responsive via width:100%)
+ *   padL,padR  bars()/line() gutter overrides, for callers that map pointer
+ *              positions back to data and need the geometry they passed in
  *   colors     categorical palette override (array of CSS colors)
  *   animate    true to enable the chart's tasteful, reduced-motion-gated effect
  *   frame      false to skip the .viz-panel wrapper (embed raw SVG)
@@ -29,6 +31,16 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 const fmt = (n) => (Math.abs(n) >= 1000 ? n.toLocaleString('en-US') : String(+(+n).toFixed(2)));
+/* Axis ticks live in a ~26px gutter: "1,788.904" overflows it, "1,789" fits.
+ * Compact above 10k, whole numbers above 100, fmt() below (decimals matter there). */
+const fmtTick = (n) => {
+  const a = Math.abs(n);
+  if (a >= 1e9) return `${+(n / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `${+(n / 1e6).toFixed(1)}M`;
+  if (a >= 10000) return `${+(n / 1000).toFixed(1)}k`;
+  if (a >= 100) return Math.round(n).toLocaleString('en-US');
+  return fmt(n);
+};
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const paletteAt = (i, colors) => (colors || PALETTE)[i % (colors || PALETTE).length];
 
@@ -83,7 +95,7 @@ export function statGrid(items = []) {
 export function bars(data = [], o = {}) {
   if (!data.length) return frame(empty('No data', { frame: false }), o);
   const w = o.width || 320, h = o.height || 160;
-  const pad = { t: 10, r: 8, b: 22, l: 30 };
+  const pad = { t: 10, r: o.padR || 8, b: 22, l: o.padL || 30 };
   const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
   const stacked = Array.isArray(data[0].value);
   const totals = data.map((d) => stacked ? d.value.reduce((a, b) => a + b, 0) : d.value);
@@ -102,7 +114,7 @@ export function bars(data = [], o = {}) {
 
   const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => {
     const y = pad.t + ph - f * ph;
-    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmt(max * f)}</text>`;
+    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtTick(max * f)}</text>`;
   }).join('');
 
   const cls = o.animate ? ' viz-fx-grow' : '';
@@ -132,7 +144,7 @@ export function line(series = [], o = {}) {
   const list = Array.isArray(series[0]) || typeof series[0] === 'number' ? [{ values: series }] : series;
   if (!list.length || !list[0].values?.length) return frame(empty('No data', { frame: false }), o);
   const w = o.width || 340, h = o.height || 150;
-  const pad = { t: 10, r: 8, b: 20, l: 30 };
+  const pad = { t: 10, r: o.padR || 8, b: 20, l: o.padL || 30 };
   const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
   const norm = (vals) => vals.map((v, i) => (typeof v === 'number' ? { x: i, y: v } : v));
   const all = list.flatMap((s) => norm(s.values));
@@ -146,7 +158,7 @@ export function line(series = [], o = {}) {
 
   const grid = [0, 0.5, 1].map((f) => {
     const y = pad.t + ph - f * ph;
-    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmt(yMin + (yMax - yMin) * f)}</text>`;
+    return `<line class="viz-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w - pad.r}" y2="${y.toFixed(1)}"/><text class="viz-tick" x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end">${fmtTick(yMin + (yMax - yMin) * f)}</text>`;
   }).join('');
 
   let defs = '';
@@ -182,7 +194,7 @@ export function spark(values = [], o = {}) {
   const d = values.map((v, i) => `${i ? 'L' : 'M'}${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(' ');
   const color = o.color || 'var(--viz-accent-bright)';
   const last = `<circle cx="${xAt(values.length - 1).toFixed(1)}" cy="${yAt(values[values.length - 1]).toFixed(1)}" r="1.8" fill="${color}"/>`;
-  return `<svg class="viz-svg" style="width:${w}px;display:inline-block;vertical-align:middle" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.ariaLabel || 'trend')}"><path d="${d}" class="viz-line" stroke="${color}" style="stroke-width:1.4"/>${last}</svg>`;
+  return `<svg class="viz-svg" style="width:${w}px;max-width:100%;display:inline-block;vertical-align:middle" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(o.ariaLabel || 'trend')}"><path d="${d}" class="viz-line" stroke="${color}" style="stroke-width:1.4"/>${last}</svg>`;
 }
 
 /* ── Radar / spider ────────────────────────────────────────── */

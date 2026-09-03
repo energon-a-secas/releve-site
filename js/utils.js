@@ -25,6 +25,9 @@ export function showToast(msg) {
     el = document.createElement('div');
     el.id = 'app-toast';
     el.className = 'toast';
+    // A live region, so the errors this surface carries are announced rather
+    // than flashed. role=status is aria-live polite plus the right semantics.
+    el.setAttribute('role', 'status');
     document.body.appendChild(el);
   }
   el.textContent = msg;
