@@ -82,7 +82,8 @@
     <div class="header-right">
       <div class="header-actions">
         <button class="btn btn--ghost btn--sm" id="loadDataBtn" data-keep-mobile>Load data</button>
-        <button class="btn btn--ghost btn--sm" id="exportBtn">Export view</button>
+        <button class="btn btn--ghost btn--sm" id="pdfBtn" data-keep-mobile>PDF report</button>
+        <button class="btn btn--ghost btn--sm" id="exportBtn">Export JSON</button>
         <button class="btn btn--ghost btn--sm" id="resetBtn">Reset</button>
       </div>
 
@@ -138,78 +139,89 @@
           <div id="statementStats"></div>
         </section>
 
-        <!-- Filters apply to sections 2, 3 and 4. A direct child of the main
-             column, not of section 1: sticky travel is bounded by the parent,
-             and inside the section it ran out of road before ever sticking. -->
-        <div class="filters" id="filters" aria-label="Active filters"></div>
+        <!-- Sections 2, 3 and 4 are the ones the filter bar governs, and this
+             wrapper is the whole reason it stops at the bottom of them. A sticky
+             element is released by its own parent's bottom edge, so the parent
+             has to be the range the filter applies to: as a direct child of the
+             main column it stayed pinned through the repo scanner, the rate card
+             and the method notes, announcing a window and a facet that applied to
+             none of them and covering the top of each one on the way past. -->
+        <div class="scope">
+          <!-- Out of flow, one pixel tall, at the top of the range. It stops
+               intersecting at the moment the bar pins, which is how events.js
+               tells a stuck bar from one still sitting in the flow. -->
+          <div class="scope__sentinel" aria-hidden="true"></div>
 
-        <!-- ── 2. Timeline ────────────────────────────────────── -->
-        <section class="section" id="timeline" aria-labelledby="timeline-title">
-          <div class="section__titles">
-            <h2 class="section__title" id="timeline-title">Timeline</h2>
-            <p class="section__lead">
-              Daily cost, stacked by model. Pick a window and every section
-              below recomputes against it.
-            </p>
-          </div>
+          <div class="filters" id="filters" aria-label="Active filters"></div>
 
-          <!-- One row: the typed window, the bucket, and the presets that set
-               both. Two rows left ~500px empty beside three small fields. -->
-          <div class="toolbar toolbar--window">
-            <label class="field"><span>From</span><input type="date" class="input" id="fromDate"></label>
-            <label class="field"><span>To</span><input type="date" class="input" id="toDate"></label>
-            <label class="field"><span>Bucket</span>
-              <select class="select" id="bucketSel">
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-              </select>
-            </label>
-            <div class="toolbar toolbar--presets" id="windowPresets"></div>
-          </div>
-
-          <div id="timelineChart"></div>
-          <div class="legend" id="timelineLegend"></div>
-          <div id="timelineTrend" class="grid"></div>
-        </section>
-
-        <!-- ── 3. Breakdowns ──────────────────────────────────── -->
-        <section class="section" id="breakdowns" aria-labelledby="breakdowns-title">
-          <div class="section__header">
+          <!-- ── 2. Timeline ────────────────────────────────────── -->
+          <section class="section" id="timeline" aria-labelledby="timeline-title">
             <div class="section__titles">
-              <h2 class="section__title" id="breakdowns-title">Breakdowns</h2>
+              <h2 class="section__title" id="timeline-title">Timeline</h2>
               <p class="section__lead">
-                The same total, cut eight ways. Click a row to filter the whole
-                page by it; click again to clear.
+                Daily cost, stacked by model. Pick a window and every section
+                below recomputes against it.
               </p>
             </div>
-            <div class="toolbar" id="dimTabs"></div>
-          </div>
 
-          <div id="breakdownBars"></div>
-          <div class="table-wrap"><table class="table" id="breakdownTable"></table></div>
-          <div class="note" id="breakdownNote" hidden></div>
-        </section>
+            <!-- One row: the typed window, the bucket, and the presets that set
+                 both. Two rows left ~500px empty beside three small fields. -->
+            <div class="toolbar toolbar--window">
+              <label class="field"><span>From</span><input type="date" class="input" id="fromDate"></label>
+              <label class="field"><span>To</span><input type="date" class="input" id="toDate"></label>
+              <label class="field"><span>Bucket</span>
+                <select class="select" id="bucketSel">
+                  <option value="day">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                </select>
+              </label>
+              <div class="toolbar toolbar--presets" id="windowPresets"></div>
+            </div>
 
-        <!-- ── 4. Cache lab ───────────────────────────────────── -->
-        <section class="section" id="cache" aria-labelledby="cache-title">
-          <div class="section__titles">
-            <h2 class="section__title" id="cache-title">Cache lab</h2>
-            <p class="section__lead">
-              Almost all of the token volume here is cache traffic, so almost all
-              of the bill is decided by cache pricing. A read costs a tenth of
-              fresh input; a one-hour write costs double it.
-            </p>
-          </div>
+            <div id="timelineChart"></div>
+            <div class="legend" id="timelineLegend"></div>
+            <div id="timelineTrend" class="grid"></div>
+          </section>
 
-          <div id="cacheHeadline"></div>
-          <div class="grid grid--wide">
-            <div id="cacheMix"></div>
-            <div id="cacheRatio"></div>
-          </div>
-          <div class="note note--good" id="cacheNote"></div>
-          <div class="table-wrap"><table class="table" id="cacheTable"></table></div>
-        </section>
+          <!-- ── 3. Breakdowns ──────────────────────────────────── -->
+          <section class="section" id="breakdowns" aria-labelledby="breakdowns-title">
+            <div class="section__header">
+              <div class="section__titles">
+                <h2 class="section__title" id="breakdowns-title">Breakdowns</h2>
+                <p class="section__lead">
+                  The same total, cut eight ways. Click a row to filter the whole
+                  page by it; click again to clear.
+                </p>
+              </div>
+              <div class="toolbar" id="dimTabs"></div>
+            </div>
+
+            <div id="breakdownBars"></div>
+            <div class="table-wrap"><table class="table" id="breakdownTable"></table></div>
+            <div class="note" id="breakdownNote" hidden></div>
+          </section>
+
+          <!-- ── 4. Cache lab ───────────────────────────────────── -->
+          <section class="section" id="cache" aria-labelledby="cache-title">
+            <div class="section__titles">
+              <h2 class="section__title" id="cache-title">Cache lab</h2>
+              <p class="section__lead">
+                Almost all of the token volume here is cache traffic, so almost all
+                of the bill is decided by cache pricing. A read costs a tenth of
+                fresh input; a one-hour write costs double it.
+              </p>
+            </div>
+
+            <div id="cacheHeadline"></div>
+            <div class="grid grid--wide">
+              <div id="cacheMix"></div>
+              <div id="cacheRatio"></div>
+            </div>
+            <div class="note note--good" id="cacheNote"></div>
+            <div class="table-wrap"><table class="table" id="cacheTable"></table></div>
+          </section>
+        </div>
 
         <!-- ── 5. Repo scanner ────────────────────────────────── -->
         <section class="section" id="repo" aria-labelledby="repo-title">
@@ -468,6 +480,13 @@ python3 releve-scan.py --days 30 --out releve.json</code>
       </div>
     </div>
   </div>
+
+  <!-- The printable statement. Empty until the PDF report button fills it, and
+       hidden from the screen and from assistive tech either way: it is a second
+       rendering of numbers the page already shows, and a screen reader meeting
+       both would read every figure twice. @media print hides everything else
+       and unhides this. -->
+  <div id="report" class="report" hidden aria-hidden="true"></div>
 
   <footer class="neo-footer" data-footer-mode="app">
     Reads your transcripts in your browser. Nothing is uploaded.

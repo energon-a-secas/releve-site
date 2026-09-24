@@ -58,6 +58,7 @@ figure from the script and a figure from the browser are the same calculation.
 - **Projector** -- sliders for iterations, turns per iteration, cache hit ratio and the share of writes at the one-hour TTL, calibrated from the loaded dataset, with a sensitivity ranking that says which lever actually moves the bill
 - **Editable rate card** -- 14 models with dated price periods; change a rate and the whole page recomputes from tokens
 - **Method, in full** -- the six pricing rules, what the dataset says about its own reliability, every stated limit, and a live parity check against the fixture
+- **Export what you filtered** -- the current view as `releve-view/v1` JSON, or as a printable PDF statement: masthead, the figures, what is counted but not priced, the charts, the breakdown, the cache table, the rates it was priced at, and the parity verdict. Built through the browser's own print pipeline, so there is no dependency and nothing leaves the page
 - **Nothing is uploaded** -- the published dataset is synthetic; your own file is read with the File API and never leaves the machine
 
 ---
@@ -182,6 +183,9 @@ releve-site/
 │   ├── widgets/                # one module per section (kpi, timeline, breakdown,
 │   │                           #   cache, repo, projector, ratecard, method)
 │   ├── events.js               # every listener; no inline onclick
+│   ├── pinning.js              # marks the filter bar while it is pinned
+│   ├── report.js               # print lifecycle for the PDF statement
+│   ├── report-doc.js           # what that statement says, section by section
 │   └── utils.js                # formatting helpers, NO_VALUE
 ├── data/
 │   ├── rates.json              # releve-rates/v1: 14 models, dated periods

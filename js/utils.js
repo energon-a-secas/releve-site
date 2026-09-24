@@ -125,7 +125,7 @@ export async function copyText(text) {
   }
 }
 
-/** Offer an object as a download. Used by Export view. */
+/** Offer an object as a download. Used by Export JSON. */
 export function downloadJson(name, obj) {
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

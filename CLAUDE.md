@@ -4,7 +4,8 @@ Releve: price your Claude Code transcripts at real API rates. Reads
 `~/.claude/projects/**/*.jsonl` with four stdlib-only Python scripts, and renders
 the result as an eight-section statement: cost by model, project, skill and
 effort, a cache lab, a repo token scanner, an iteration projector, an editable
-rate card, and a method page that reports its own parity check. Modular ES
+rate card, and a method page that reports its own parity check. The same filtered
+view exports as JSON, or as a printable PDF statement. Modular ES
 modules, no build, no backend, nothing uploaded (releve.neorgon.com)
 
 **Live:** releve.neorgon.com · **Port:** 8874
@@ -52,7 +53,10 @@ prevent, and the fixture is the only thing that catches it.
 | `js/widgets/projector.js` | section 6: `calibrated`, `seed`, `project`, `output`, `sensitivity`, `note` |
 | `js/widgets/ratecard.js` | section 7: `provenance`, `table`, `multipliers`, `tiers`, `sensitivity` |
 | `js/widgets/method.js` | section 8: `parity`, `quality`, `limits`, `scriptList` |
+| `js/report.js` | The PDF path's lifecycle: `printReport`, `wirePrinting`. Decides when the report is built and hands the page to `window.print()`; the `@media print` block in `css/style.css` is the other half |
+| `js/report-doc.js` | `buildDocument`: what the report says, section by section. Stands to `report.js` as `widgets/` stands to `render.js` |
 | `js/events.js` | `bindEvents`, `adoptDoc`, `openModal`, `closeModal`. Every listener; no inline onclick |
+| `js/pinning.js` | `wirePinning`: marks the filter bar `data-stuck` while it is pinned. Watches geometry, writes one attribute, touches no state |
 | `js/utils.js` | `money`, `big`, `count`, `pct`, `mult`, `shortModel`, `NO_VALUE`, `downloadJson` |
 | `js/app.js` | the boot order, and nothing else: ingest, then render, then bind. 41 lines, exports nothing |
 
@@ -102,9 +106,26 @@ labels only. `--anonymize` additionally hashes project labels and drops `cwd`,
 - The empty cell is the word `none` (`NO_VALUE` in `js/utils.js`), fleet-wide.
 - Header and footer come from the shared kits. No site-local `.neo-footer` or
   `.header-bar` CSS. Header is `app` mode with `data-header-skin="brass"`.
-- Every chart is a builder from `js/viz.js`. Do not hand-roll an SVG.
+- Every chart is a builder from `js/viz.js`. Do not hand-roll an SVG. The PDF
+  report uses the same builders, so a chart cannot come out one way on screen
+  and another on paper.
+- **The filter bar is sticky only over what it filters.** It sits inside
+  `.scope` with sections 2, 3 and 4, because a sticky element is released by its
+  own parent's bottom edge and by nothing else. Moving it out of that wrapper,
+  or widening the wrapper, puts it back over the four sections it does not
+  apply to.
 - The fleet guideline is ~500 lines per module. `css/style.css` is over it because
-  it is one file by convention; no JS module is.
+  it is one file by convention. This said no JS module was over it, which stopped
+  being true at some point before 2026-09-23: `js/events.js` is the one that is,
+  and it is the delegated click handler plus the wiring for eight sections, so
+  count rather than trust a number written here:
+
+  ```bash
+  wc -l js/*.js js/widgets/*.js | sort -rn | head
+  ```
+
+  New behaviour that mutates no state and renders nothing belongs beside it, not
+  inside it. `js/pinning.js` is the worked example.
 
 ## Gotchas
 

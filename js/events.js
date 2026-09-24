@@ -21,6 +21,8 @@ import { publishedPair } from './rates.js';
 import * as timeline from './widgets/timeline.js';
 import * as projector from './widgets/projector.js';
 import * as repoWidget from './widgets/repo.js';
+import { printReport, wirePrinting } from './report.js';
+import { wirePinning } from './pinning.js';
 import {
   $, clamp, copyText, debounce, downloadJson, showToast,
 } from './utils.js';
@@ -355,6 +357,17 @@ function exportView() {
   });
 }
 
+/** Hand the filtered statement to the browser's print pipeline, where "Save as
+ *  PDF" is the export. The report is built from state.derived, so it is the view
+ *  on screen: the window, the facet and any rate edit all travel onto the page. */
+function reportPdf() {
+  if (!printReport(state)) {
+    showToast('Nothing loaded to report on');
+    return;
+  }
+  showToast('Choose "Save as PDF" as the destination');
+}
+
 /** Reset the reading, not the data: filters, cut, and rate edits. The dataset
  *  and the plan cost are the visitor's inputs and are left alone. */
 function resetView() {
@@ -483,6 +496,7 @@ export function bindEvents() {
 
   $('loadDataBtn').addEventListener('click', () => openModal('loadModal'));
   $('exportBtn').addEventListener('click', exportView);
+  $('pdfBtn').addEventListener('click', reportPdf);
   $('resetBtn').addEventListener('click', resetView);
   $('ratesReset').addEventListener('click', resetRates);
   $('loadDemoAgain').addEventListener('click', backToDemo);
@@ -531,6 +545,10 @@ export function bindEvents() {
   wireDrop('dataDrop', 'dataFile', loadFile);
   wireDrop('repoDrop', 'repoFile', loadRepoFile);
   wireRail();
+  wirePinning();
+  // Registers the print teardown, and makes the browser's own print command
+  // produce the report rather than the app page.
+  wirePrinting(state);
 
   // Chart geometry is picked per render (timeline.geo(): 380 SVG units under
   // 700px, 760 above), so a resize that crosses the boundary needs a repaint

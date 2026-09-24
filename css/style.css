@@ -44,7 +44,19 @@
   --z-sticky-header: 200;
   --z-modal: 400;
   --z-toast: 500;
+
+  /* Where the filter bar pins. Derived from the header's own height rather
+     than typed, so the two cannot drift apart, and overridden below when app
+     mode hides the bar on a scroll down: a fixed offset left the filters
+     floating over a 56px band of moving content with nothing above them. */
+  --filters-top: calc(var(--header-h-app, 56px) + 8px);
 }
+
+/* The kit slides the bar out on a scroll down and back on a scroll up. The
+   filters follow it, so the gap between them never opens. Falls back to the
+   header-height offset where :has() is unsupported, which is where this
+   started. */
+body:has(.header-bar.header-hidden) { --filters-top: 8px; }
 
 /* Author display values (e.g. .section/.stack flex) would otherwise defeat the
    hidden attribute — restore its authority once, globally. */
@@ -824,12 +836,45 @@ button:active,
   color: var(--text-muted);
 }
 
+/* ── Filter scope ──────────────────────────────────────────────
+ * The range the filter bar governs: sections 2, 3 and 4. It exists so the bar
+ * has a parent to be released by. Sticky travel is bounded by the parent's
+ * bottom edge and by nothing else, so a bar parented to the whole main column
+ * follows the reader to the end of the page, and the four sections below this
+ * one are not filtered by it. It was describing a window and a facet that
+ * applied to none of them, over the top of whatever they were showing.
+ *
+ * The gap has to be restated: .shell__main is a .stack--loose flex column, and
+ * wrapping four of its children makes them one flex item whose own children
+ * would otherwise close up to zero.
+ */
+.scope {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+.scope__sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
 /* ── Filter bar ────────────────────────────────────────────────
  * Sticky, because a filter you cannot see is a filter you forget you set, and
- * every number below it is conditional on this row. */
+ * every number in the three sections below it is conditional on this row.
+ *
+ * Two states. In the flow it is a plain row, flush with the sections it
+ * belongs to. Pinned, it is a layer over moving content and says so with an
+ * edge and a shadow, because the blur alone read as a rendering artefact.
+ * events.js sets data-stuck from the sentinel above.
+ */
 .filters {
   position: sticky;
-  top: 64px;
+  top: var(--filters-top);
   z-index: 20;
   display: flex;
   flex-wrap: wrap;
@@ -838,8 +883,38 @@ button:active,
   padding: var(--space-3);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  /* The offset moves with the header, so the timing is the header's own, token
+     for token. Anything else and the two cross: this bar sits 8px under the
+     header only for as long as both travel the same 56px on the same curve,
+     and a bar easing out under a header easing in slides behind it for about a
+     tenth of a second on every change of scroll direction. This is the showing
+     curve; the hiding one is below, matched to the kit the same way. */
+  transition:
+    top .26s var(--header-ease, ease),
+    border-color .2s var(--ease-out),
+    box-shadow .2s var(--ease-out);
+}
+body:has(.header-bar.header-hidden) .filters {
+  transition:
+    top .2s var(--header-ease-in, ease),
+    border-color .2s var(--ease-out),
+    box-shadow .2s var(--ease-out);
+}
+.filters[data-stuck="true"] {
+  border-color: var(--border-strong);
+  /* Contact plus ambient, no spread: enough to lift the row off the numbers
+     sliding under it without turning into a drop shadow on a card. */
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--bg) 70%, transparent),
+    0 10px 22px -14px rgba(2, 6, 23, .9);
+}
+/* The offset changes when the header hides, and a sticky element animating its
+   own top is movement the reader did not ask for. */
+@media (prefers-reduced-motion: reduce) {
+  .filters { transition: none; }
 }
 .filters__label {
   font-size: var(--text-xs);
@@ -1190,10 +1265,375 @@ main a:not([class]) { color: var(--accent-bright); }
 .slider > input[type="range"] { grid-column: 1 / -1; }
 
 /* ── Responsive ────────────────────────────────────────────── */
-@media (max-width: 939px) {
-  .filters { top: 0; }
-}
+/* The rail becomes a scrolling row below 940px, but the header stays sticky
+   and stays 56px at every width, so the filter bar keeps the one offset it has
+   on a desktop and .scope keeps the one gap .stack--loose uses around it. */
 @media (max-width: 600px) {
   .headline__cell { padding: var(--space-3) var(--space-4); }
   .table th, .table td { padding: 6px var(--space-2); }
+}
+
+/* ── The printable statement ───────────────────────────────────
+ * #report is empty and hidden until the PDF report button fills it, and this
+ * block is what turns it into a document. The screen never shows it.
+ *
+ * Paper, not the app. The dark surface this page uses is right for the scene it
+ * was designed for (a desk at the end of a long stretch of agent work, terminal
+ * open in the next window) and wrong for the one a report lands in: attached to
+ * a mail, read on a phone, or actually printed. So the report declares its own
+ * light palette rather than inheriting the screen's, and it declares it by
+ * overriding the Viz Kit's ink tokens, so the charts come with it instead of
+ * staying legible only on black.
+ */
+.report { display: none; }
+
+@media print {
+  /* Nothing but the report. The page's own sections are the same figures in an
+     interactive layout, so printing both prints everything twice. */
+  body.printing > *:not(#report) { display: none !important; }
+  body.printing { background: #fff; display: block; }
+
+  .report {
+    display: block;
+    /* The site's own family, deliberately. A report that changed typeface to
+       look like a report would be the only surface here that does not look
+       like the tool that made it. Money stays on the mono stack, same as the
+       screen, because that is what makes two totals comparable by eye. */
+    font-family: var(--font);
+    color: #14110b;
+    background: #fff;
+    font-size: 10.5pt;
+    line-height: 1.5;
+
+    /* Chart ink, re-pointed at paper. The Viz Kit resolves these at use, so a
+       redefinition here re-skins every builder without touching viz.css. The
+       categorical --viz-c1..c8 are left alone: they are mid-tone and read on
+       white as well as on black, and changing them would make the report's
+       series colours disagree with the screen's. */
+    --viz-ink: #14110b;
+    --viz-ink-2: #45403a;
+    --viz-ink-mute: #6b6559;
+    --viz-grid: rgba(20, 17, 11, .10);
+    --viz-grid-2: rgba(20, 17, 11, .16);
+    --viz-surface: #fff;
+    --viz-border: rgba(20, 17, 11, .16);
+    --viz-border-strong: rgba(20, 17, 11, .26);
+    --viz-accent: #8a5d04;
+    --viz-accent-bright: #a97406;
+  }
+
+  /* Bar fills and the donut's ring are the data, not decoration: a viewer that
+     drops backgrounds to save ink drops the chart. */
+  .report svg,
+  .report .report__cell-bar i,
+  .report .report__figure--lead {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 16mm 14mm 14mm;
+  }
+
+  /* ── Masthead ── */
+  .report__masthead { margin-bottom: 10mm; }
+  .report__brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #14110b;
+  }
+  .report__wordmark {
+    font-size: 15pt;
+    font-weight: 700;
+    letter-spacing: .04em;
+  }
+  .report__kicker { font-size: 8.5pt; color: #6b6559; }
+  .report__title {
+    margin-top: 7mm;
+    font-size: 26pt;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    line-height: 1.05;
+  }
+  .report__range {
+    margin-top: 2px;
+    font-size: 12pt;
+    color: #45403a;
+  }
+  .report__meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4mm;
+    margin-top: 6mm;
+    padding-top: 3mm;
+    border-top: 1px solid rgba(20, 17, 11, .16);
+  }
+  .report__meta dt {
+    font-size: 7.5pt;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #6b6559;
+  }
+  .report__meta dd { font-size: 9.5pt; margin-top: 2px; }
+  .report__standfirst {
+    margin-top: 6mm;
+    padding: 3.5mm 4mm;
+    background: #f6f2e8;
+    border: 1px solid rgba(20, 17, 11, .14);
+    border-radius: 3px;
+    font-size: 9.5pt;
+    line-height: 1.55;
+    max-width: none;
+  }
+
+  /* ── The four figures ── */
+  /* Three across, under a lead that spans them. Two columns left the fourth
+     cell alone on a row of its own, which reads as a missing cell. */
+  .report__figures {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3mm;
+    margin-bottom: 9mm;
+    break-inside: avoid;
+  }
+  .report__figure {
+    padding: 4mm;
+    border: 1px solid rgba(20, 17, 11, .18);
+    border-radius: 3px;
+  }
+  .report__figure--lead {
+    grid-column: 1 / -1;
+    background: #f6f2e8;
+    border-color: rgba(20, 17, 11, .3);
+  }
+  .report__figure-label {
+    display: block;
+    font-size: 7.5pt;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #6b6559;
+  }
+  .report__figure-value {
+    display: block;
+    margin-top: 1mm;
+    font-family: var(--mono);
+    font-size: 19pt;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+  .report__figure--lead .report__figure-value { font-size: 30pt; }
+  .report__figure-foot {
+    display: block;
+    margin-top: 1mm;
+    font-size: 8.5pt;
+    color: #45403a;
+  }
+
+  /* ── Sections ── */
+  .report__block { margin-bottom: 9mm; }
+  /* Each of these opens a page. The report is a handful of dense tables, and a
+     table that starts four lines above a page break is unreadable in a way that
+     a page of white space at the bottom is not. */
+  .report__block--break { break-before: page; }
+  .report__block h2 {
+    font-size: 13pt;
+    font-weight: 600;
+    padding-bottom: 2mm;
+    margin-bottom: 4mm;
+    border-bottom: 1px solid rgba(20, 17, 11, .24);
+    break-after: avoid;
+  }
+  .report__block h3 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    margin: 6mm 0 3mm;
+    break-after: avoid;
+  }
+  .report__note {
+    font-size: 9pt;
+    line-height: 1.55;
+    color: #45403a;
+    margin-top: 3mm;
+    max-width: 78ch;
+  }
+  .report__note--parity {
+    padding: 3mm;
+    background: #eef6ee;
+    border: 1px solid rgba(20, 90, 40, .28);
+    border-radius: 3px;
+    color: #1e4620;
+  }
+  .report__note--bad {
+    background: #fdecec;
+    border-color: rgba(150, 20, 20, .3);
+    color: #7a1414;
+  }
+
+  /* ── Tables ── */
+  .report__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin-top: 4mm;
+  }
+  .report__table th,
+  .report__table td {
+    padding: 1.6mm 2mm;
+    text-align: left;
+    border-bottom: 1px solid rgba(20, 17, 11, .12);
+    vertical-align: top;
+  }
+  .report__table thead th {
+    font-size: 7.5pt;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #6b6559;
+    border-bottom: 1px solid rgba(20, 17, 11, .35);
+  }
+  /* Repeat the head on every page a long breakdown spills onto. */
+  .report__table thead { display: table-header-group; }
+  .report__table tr { break-inside: avoid; }
+  .report__table td.n,
+  .report__table th.n {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .report__cell-key {
+    max-width: 62mm;
+    overflow-wrap: anywhere;
+  }
+  .report__cell-note { color: #6b6559; font-size: 8pt; }
+  .report__cell-bar {
+    width: 22mm;
+    padding-top: 2.4mm;
+  }
+  .report__cell-bar i {
+    display: block;
+    height: 1.6mm;
+    min-width: .4mm;
+    background: #a97406;
+    border-radius: 1mm;
+  }
+  /* An absent number is a word, not a blank and never a zero: the same rule the
+     screen keeps, and the one the whole page argues for. */
+  .report__unknown {
+    font-family: var(--mono);
+    font-size: .92em;
+    color: #6b6559;
+  }
+  .report__num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Definition lists ── */
+  .report__deflist { margin-top: 3mm; }
+  .report__deflist > div {
+    padding: 2.2mm 0;
+    border-bottom: 1px solid rgba(20, 17, 11, .1);
+    break-inside: avoid;
+  }
+  .report__deflist dt { font-size: 9pt; font-weight: 600; }
+  .report__deflist dd {
+    font-size: 8.5pt;
+    color: #45403a;
+    margin-top: 1mm;
+    max-width: 82ch;
+  }
+
+  /* ── Charts and their keys ── */
+  .report .viz-panel {
+    border: 1px solid rgba(20, 17, 11, .16);
+    border-radius: 3px;
+    background: #fff;
+    padding: 3mm;
+    break-inside: avoid;
+  }
+  .report .viz-svg { width: 100%; height: auto; }
+  /* Direct children only. statGrid() at the top of a section is a row of four
+     readings and wants a grid; the donut builds its own legend from the same
+     class inside .viz-panel, and forcing that into four equal columns inside a
+     150px well boxed each swatch and wrapped the labels. */
+  .report__block > .viz-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2mm;
+    margin-top: 3mm;
+  }
+  .report__block > .viz-stats > .viz-stat {
+    padding: 2.5mm;
+    border: 1px solid rgba(20, 17, 11, .16);
+    border-radius: 3px;
+    break-inside: avoid;
+  }
+  .report__block > .viz-stats > .viz-stat .viz-stat__value { font-size: 12pt; }
+  /* The donut's own legend: a plain wrapped row of swatch plus label. */
+  .report .viz-panel .viz-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm 3mm;
+    margin-top: 2.5mm;
+  }
+  .report .viz-panel .viz-stat {
+    border: 0;
+    padding: 0;
+    font-size: 7.5pt;
+  }
+  .report__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 4mm;
+    margin-top: 2.5mm;
+    font-size: 8pt;
+    color: #45403a;
+  }
+  .report__key { display: inline-flex; align-items: center; gap: 1.5mm; }
+  .report__key i {
+    width: 2.4mm; height: 2.4mm;
+    border-radius: .6mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Wide enough for the donut's legend to sit two across. At one column the
+     legend stacked five deep and the panel ran a long way past the paragraph
+     beside it. */
+  .report__split {
+    display: grid;
+    grid-template-columns: 62mm minmax(0, 1fr);
+    gap: 5mm;
+    align-items: start;
+    margin-top: 4mm;
+    break-inside: avoid;
+  }
+  .report__split .report__note { margin-top: 0; }
+
+  .report__cmd {
+    margin-top: 3mm;
+    padding: 3mm;
+    background: #f6f2e8;
+    border: 1px solid rgba(20, 17, 11, .16);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 8pt;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* ── Colophon ── */
+  .report__colophon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 6mm;
+    margin-top: 10mm;
+    padding-top: 3mm;
+    border-top: 1px solid rgba(20, 17, 11, .3);
+    font-size: 7.5pt;
+    color: #6b6559;
+  }
 }
